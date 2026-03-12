@@ -2247,6 +2247,38 @@
         }
       ],
       "closedAt": "2026-03-12T15:15:54.374Z"
+    },
+    {
+      "id": "49o2iw3b",
+      "type": "chore",
+      "title": "Add anonymized example report to repo",
+      "description": "Create an `examples/` directory with a generalized, anonymized version of the real audit report (JSON + HTML). Replace all real tenant data (company names, emails, app names, domains) with generic placeholders like `contoso.com`, `user@contoso.onmicrosoft.com`, `app:Legacy CRM Integration`, etc. This gives prospective users a preview of what the tool produces without exposing real tenant data.\n\nSource: `output/2026-03-12T14-59-06/report.json` and corresponding HTML.",
+      "status": "closed",
+      "linkedIssueIds": [],
+      "questions": [],
+      "research": [
+        {
+          "type": "comment",
+          "content": "**Strings to anonymize from real report:**\n- Domains: `advokat-jensen.dk`, `advokatjensen.onmicrosoft.com`, `zentura.dk` → `contoso.com`, `contoso.onmicrosoft.com`\n- Emails: all `user@domain` patterns → generic names like `admin@contoso.com`, `john.doe@contoso.com`\n- App names: real app names → generic like `Legacy CRM Integration`, `IT Automation Tool`, `HR Portal`, etc.\n- Policy names: `Zentura Baseline - *` → `Contoso Baseline - *`\n- Secret names: keep generic or randomize\n\nReduce the 67 app findings to ~10 representative examples covering the key finding types (expired secrets, excessive permissions, expiring soon).",
+          "addedAt": "2026-03-12T15:18:58.198Z"
+        }
+      ],
+      "createdAt": "2026-03-12T15:17:58.441Z",
+      "updatedAt": "2026-03-12T15:22:21.762Z",
+      "autoValidation": {
+        "type": "agent",
+        "strategy": "Verify examples/ directory exists with anonymized report.json containing no real company names, emails, or domains from the original report"
+      },
+      "closeMessage": "Created anonymized example report in examples/ directory with JSON + HTML. All real tenant data replaced with generic contoso.com names. README updated with links to example files.",
+      "closeReason": "done",
+      "validations": [
+        {
+          "criterion": "Create an `examples/` directory with a generalized, anonymized version of the real audit report (JSON + HTML). Replace all real tenant data (company names, emails, app names, domains) with generic placeholders like `contoso.com`, `user@contoso.onmicrosoft.com`, `app:Legacy CRM Integration`, etc. This gives prospective users a preview of what the tool produces without exposing real tenant data.\n\nSource: `output/2026-03-12T14-59-06/report.json` and corresponding HTML.",
+          "evidence": "✅ examples/report.json (16KB) and examples/report.html (21KB) exist\n✅ Zero matches for real company/user data (zentura, advokat, jensen, pedersen, etc.) in both files\n✅ Uses generic contoso.com domain and anonymized app/user names\n✅ All 15 checks preserved with representative findings (67 app findings trimmed to 12)\n✅ README updated with Example Report section linking to both files",
+          "met": true
+        }
+      ],
+      "closedAt": "2026-03-12T15:22:21.762Z"
     }
   ],
   "categories": [

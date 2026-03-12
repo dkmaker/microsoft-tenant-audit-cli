@@ -158,6 +158,13 @@ The drift summary appears in both CLI output and the HTML dashboard.
 | Access Control | Teams | Guest access, app policies, app catalog, meeting policies |
 | Threat Protection | Exchange | Anti-spam/phish policies, transport rules |
 
+## Example Report
+
+The [`examples/`](examples/) directory contains an anonymized sample report so you can preview the output without running an audit:
+
+- [`examples/report.json`](examples/report.json) — Machine-readable JSON report
+- [`examples/report.html`](examples/report.html) — Interactive HTML dashboard (open in any browser)
+
 ## Development
 
 See [DEVELOPMENT.md](DEVELOPMENT.md) for build instructions, project structure, and how to add new checks.

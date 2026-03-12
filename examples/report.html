@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>M365 Security Audit Report</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.js"></script>
+  <style>
+    :root {
+      --critical: #D32F2F;
+      --high: #E65100;
+      --medium: #F9A825;
+      --low: #1565C0;
+      --info: #757575;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; color: #333; padding: 2rem; max-width: 1200px; margin: 0 auto; }
+    h1 { font-size: 1.5rem; margin-bottom: 0.25rem; }
+    h2 { font-size: 1.1rem; margin-bottom: 1rem; }
+    .subtitle { color: #666; margin-bottom: 2rem; font-size: 0.9rem; }
+    .summary-cards { display: flex; gap: 1rem; margin-bottom: 2rem; flex-wrap: wrap; }
+    .card { background: white; border-radius: 8px; padding: 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); min-width: 100px; text-align: center; flex: 1; }
+    .card .count { font-size: 2rem; font-weight: bold; }
+    .card .label { font-size: 0.75rem; color: #666; text-transform: uppercase; letter-spacing: 0.05em; }
+    .card.critical .count { color: var(--critical); }
+    .card.high .count { color: var(--high); }
+    .card.medium .count { color: var(--medium); }
+    .card.low .count { color: var(--low); }
+    .card.info .count { color: var(--info); }
+    .card.total .count { color: #333; }
+    .card.pass .count { color: #2E7D32; }
+    .charts { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem; }
+    .chart-container { background: white; border-radius: 8px; padding: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    .chart-container h2 { margin-bottom: 0.75rem; }
+    table { width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 2rem; }
+    th, td { text-align: left; padding: 0.75rem 1rem; border-bottom: 1px solid #eee; font-size: 0.9rem; }
+    th { background: #fafafa; font-size: 0.75rem; text-transform: uppercase; color: #666; letter-spacing: 0.05em; }
+    .badge { display: inline-block; padding: 2px 10px; border-radius: 4px; color: white; font-size: 0.75rem; font-weight: 600; }
+    .badge.pass { background: #2E7D32; }
+    .badge.fail { background: var(--critical); }
+    .badge.warn { background: var(--medium); color: #333; }
+    .badge.error { background: #333; }
+    .severity-tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 600; text-transform: capitalize; }
+    .severity-tag.critical { background: #FFCDD2; color: #B71C1C; }
+    .severity-tag.high { background: #FFE0B2; color: #BF360C; }
+    .severity-tag.medium { background: #FFF9C4; color: #F57F17; }
+    .severity-tag.low { background: #BBDEFB; color: #0D47A1; }
+    .severity-tag.info { background: #E0E0E0; color: #424242; }
+    details { margin-top: 0.5rem; }
+    details summary { cursor: pointer; color: var(--low); font-size: 0.85rem; }
+    .finding { background: #f9f9f9; padding: 0.5rem 0.75rem; margin: 0.25rem 0; border-left: 3px solid var(--low); font-size: 0.85rem; border-radius: 0 4px 4px 0; }
+    .remediation { background: #E8F5E9; padding: 0.75rem; margin: 0.5rem 0 0.25rem; border-left: 3px solid #2E7D32; border-radius: 0 4px 4px 0; font-size: 0.85rem; }
+    .remediation a { color: #1565C0; }
+    .remediation .script { background: #263238; color: #ECEFF1; padding: 0.5rem 0.75rem; border-radius: 4px; margin-top: 0.5rem; font-size: 0.8rem; overflow-x: auto; white-space: pre-wrap; }
+    .footer { text-align: center; color: #999; font-size: 0.8rem; margin-top: 2rem; }
+    @media print {
+      body { background: white; padding: 0; }
+      .chart-container, .card, table { box-shadow: none; border: 1px solid #ddd; break-inside: avoid; }
+    }
+    @media (max-width: 768px) {
+      .charts { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <h1>🛡️ M365 Security Audit Report</h1>
+  <p class="subtitle">Generated: 2026-03-15T10:30:00.000Z · Checks run: 15</p>
+
+  <div class="summary-cards">
+    <div class="card total"><div class="count">41</div><div class="label">Total Findings</div></div>
+    <div class="card pass"><div class="count">4</div><div class="label">Passed</div></div>
+    <div class="card critical"><div class="count">9</div><div class="label">Critical</div></div>
+    <div class="card high"><div class="count">19</div><div class="label">High</div></div>
+    <div class="card medium"><div class="count">2</div><div class="label">Medium</div></div>
+    <div class="card low"><div class="count">0</div><div class="label">Low</div></div>
+    <div class="card info"><div class="count">11</div><div class="label">Info</div></div>
+  </div>
+
+  <div class="charts">
+    <div class="chart-container">
+      <h2>Severity Breakdown</h2>
+      <canvas id="severityChart"></canvas>
+    </div>
+    <div class="chart-container">
+      <h2>Findings by Service</h2>
+      <canvas id="serviceChart"></canvas>
+    </div>
+    <div class="chart-container">
+      <h2>Findings by Category</h2>
+      <canvas id="categoryChart"></canvas>
+    </div>
+    <div class="chart-container">
+      <h2>Check Results Overview</h2>
+      <canvas id="resultsChart"></canvas>
+    </div>
+  </div>
+
+  
+
+  <h2>Check Details</h2>
+  <table>
+    <thead>
+      <tr><th>Check</th><th>Service</th><th>Status</th><th>Severity</th><th>Findings</th><th>Framework</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>
+          Privileged Role Assignments
+          <details>
+              <summary>8 findings</summary>
+              <div class="finding"><strong>role:Global Administrator</strong> — 5 Global Admins found (recommended: 2-4)</div>
+              <div class="finding"><strong>user:svc-jit@contoso.com</strong> — Has 2 privileged roles: User Administrator, Privileged Role Administrator</div>
+              <div class="finding"><strong>user:admin@contoso.com</strong> — Assigned to Global Administrator</div>
+              <div class="finding"><strong>user:john.doe@contoso.com</strong> — Assigned to Global Administrator</div>
+              <div class="finding"><strong>user:jane.smith@contoso.com</strong> — Assigned to Global Administrator</div>
+              <div class="finding"><strong>user:it.admin@contoso.com</strong> — Assigned to Global Administrator</div>
+              <div class="finding"><strong>user:external.consultant_partner.com#EXT#@contoso.onmicrosoft.com</strong> — Assigned to Global Administrator</div>
+              <div class="finding"><strong>user:helpdesk@contoso.com</strong> — Assigned to SharePoint Administrator</div>
+              
+            </details>
+        </td>
+        <td>Entra ID</td>
+        <td><span class="badge warn">WARN</span></td>
+        <td><span class="severity-tag critical">critical</span></td>
+        <td>8</td>
+        <td>CIS M365 v3.1 1.1.1, CIS M365 v3.1 1.1.3</td>
+      </tr>
+<tr>
+        <td>
+          MFA Enforcement Status
+          <details>
+              <summary>1 finding · has remediation</summary>
+              <div class="finding"><strong>user:external.consultant_partner.com#EXT#@contoso.onmicrosoft.com</strong> — No MFA methods registered. Roles: Global Administrator</div>
+              <div class="remediation">
+              <strong>Remediation:</strong> Enable MFA for all privileged accounts using Conditional Access policies or per-user MFA settings.
+              <br><a href="https://learn.microsoft.com/en-us/entra/identity/authentication/howto-mfa-getstarted" target="_blank" rel="noopener">📖 Documentation</a>
+              <pre class="script"># Require MFA for all admin roles via Conditional Access
+Connect-MgGraph -Scopes 'Policy.ReadWrite.ConditionalAccess'
+# Create a policy targeting directory roles with MFA grant control</pre>
+            </div>
+            </details>
+        </td>
+        <td>Entra ID</td>
+        <td><span class="badge fail">FAIL</span></td>
+        <td><span class="severity-tag critical">critical</span></td>
+        <td>1</td>
+        <td>CIS M365 v3.1 5.2.2.1</td>
+      </tr>
+<tr>
+        <td>
+          Conditional Access Policy Audit
+          <details>
+              <summary>4 findings</summary>
+              <div class="finding"><strong>policy:Contoso Baseline - Global Enforced MFA</strong> — Targets all users but excludes 1 group(s)</div>
+              <div class="finding"><strong>policy:Contoso Baseline - Block Legacy Authentication</strong> — Targets all users but excludes 2 group(s)</div>
+              <div class="finding"><strong>policy:Contoso Baseline - Enforce MFA Azure Management</strong> — Targets all users but excludes 1 group(s)</div>
+              <div class="finding"><strong>policy:Contoso Baseline - Block High Risk Locations</strong> — Targets all users but excludes 1 group(s)</div>
+              
+            </details>
+        </td>
+        <td>Entra ID</td>
+        <td><span class="badge warn">WARN</span></td>
+        <td><span class="severity-tag high">high</span></td>
+        <td>4</td>
+        <td>CIS M365 v3.1 5.2.2.3</td>
+      </tr>
+<tr>
+        <td>
+          Guest/External User Enumeration
+          <details>
+              <summary>2 findings</summary>
+              <div class="finding"><strong>tenant</strong> — 4 guest/external user(s) in the directory</div>
+              <div class="finding"><strong>user:external.consultant@partner.com</strong> — Guest user has admin role(s): Global Administrator</div>
+              
+            </details>
+        </td>
+        <td>Entra ID</td>
+        <td><span class="badge fail">FAIL</span></td>
+        <td><span class="severity-tag medium">medium</span></td>
+        <td>2</td>
+        <td>CIS M365 v3.1 1.3.1</td>
+      </tr>
+<tr>
+        <td>
+          App Registrations &amp; Secrets
+          <details>
+              <summary>12 findings</summary>
+              <div class="finding"><strong>app:Legacy CRM Integration</strong> — Secret &quot;api-key&quot; expired on 2023-02-21</div>
+              <div class="finding"><strong>app:IT Automation Platform</strong> — Has 58 app-level (Role) permissions (threshold: 5)</div>
+              <div class="finding"><strong>app:Vendor Management Portal</strong> — Secret &quot;Default&quot; expired on 2025-01-20</div>
+              <div class="finding"><strong>app:HR Onboarding Tool</strong> — Secret &quot;sso-secret&quot; expired on 2022-11-05</div>
+              <div class="finding"><strong>app:Graph API Test App</strong> — Secret &quot;test&quot; expired on 2023-07-11</div>
+              <div class="finding"><strong>app:Helpdesk Bot</strong> — Secret &quot;Password&quot; expired on 2024-07-01</div>
+              <div class="finding"><strong>app:M365 Audit Framework (Read-Only)</strong> — Has 16 app-level (Role) permissions (threshold: 5)</div>
+              <div class="finding"><strong>app:Backup Storage Connector</strong> — Secret &quot;Key&quot; expired on 2023-10-19</div>
+              <div class="finding"><strong>app:SharePoint Automation</strong> — Has 12 app-level (Role) permissions (threshold: 5)</div>
+              <div class="finding"><strong>app:Exchange OAuth PoC</strong> — Secret &quot;OAuth PoC Secret&quot; expires on 2026-03-21 (within 30 days)</div>
+              <div class="finding"><strong>app:Network Appliance Integration</strong> — Secret &quot;connector&quot; expired on 2025-02-09</div>
+              <div class="finding"><strong>app:Config Management Tool</strong> — Has 13 app-level (Role) permissions (threshold: 5)</div>
+              
+            </details>
+        </td>
+        <td>Entra ID</td>
+        <td><span class="badge warn">WARN</span></td>
+        <td><span class="severity-tag high">high</span></td>
+        <td>12</td>
+        <td>CIS M365 v3.1 5.1</td>
+      </tr>
+<tr>
+        <td>
+          SharePoint Tenant Sharing Settings
+          <details>
+              <summary>3 findings · has remediation</summary>
+              <div class="finding"><strong>tenant:sharepoint</strong> — Sharing capability allows new external users: &quot;externalUserSharingOnly&quot; — New and existing external users (must authenticate)</div>
+              <div class="finding"><strong>tenant:sharepoint</strong> — No domain restrictions on sharing (sharingDomainRestrictionMode: &quot;none&quot;). Consider using an allow-list or block-list.</div>
+              <div class="finding"><strong>tenant:sharepoint</strong> — Idle session sign-out is not enabled for SharePoint</div>
+              <div class="remediation">
+              <strong>Remediation:</strong> Restrict external sharing to authenticated guests only. Disable 'Anyone' links on sensitive sites.
+              <br><a href="https://learn.microsoft.com/en-us/sharepoint/turn-external-sharing-on-or-off" target="_blank" rel="noopener">📖 Documentation</a>
+              <pre class="script">Set-SPOTenant -SharingCapability ExternalUserSharingOnly
+# Per-site: Set-SPOSite -Identity &lt;url&gt; -SharingCapability ExternalUserSharingOnly</pre>
+            </div>
+            </details>
+        </td>
+        <td>SharePoint Online</td>
+        <td><span class="badge warn">WARN</span></td>
+        <td><span class="severity-tag high">high</span></td>
+        <td>3</td>
+        <td>CIS M365 v3.1 7.2.1</td>
+      </tr>
+<tr>
+        <td>
+          Inbox Rules with External Forwarding
+          <details>
+              <summary>0 findings · has remediation</summary>
+              
+              <div class="remediation">
+              <strong>Remediation:</strong> Disable external auto-forwarding via transport rule or remove individual inbox forwarding rules.
+              <br><a href="https://learn.microsoft.com/en-us/exchange/policy-and-compliance/mail-flow-rules/mail-flow-rules" target="_blank" rel="noopener">📖 Documentation</a>
+              <pre class="script"># Disable forwarding per mailbox:
+Set-Mailbox -Identity &lt;user&gt; -DeliverToMailboxAndForward $false -ForwardingSmtpAddress $null
+# Block external forwarding org-wide via transport rule</pre>
+            </div>
+            </details>
+        </td>
+        <td>Exchange Online</td>
+        <td><span class="badge pass">PASS</span></td>
+        <td><span class="severity-tag high">high</span></td>
+        <td>0</td>
+        <td>CIS M365 v3.1 6.2.1</td>
+      </tr>
+<tr>
+        <td>
+          SharePoint Site Permissions Audit
+          
+        </td>
+        <td>SharePoint Online</td>
+        <td><span class="badge pass">PASS</span></td>
+        <td><span class="severity-tag medium">medium</span></td>
+        <td>0</td>
+        <td>CIS M365 v3.1 7.2.3</td>
+      </tr>
+<tr>
+        <td>
+          Teams Guest Member Detection
+          
+        </td>
+        <td>Microsoft Teams</td>
+        <td><span class="badge pass">PASS</span></td>
+        <td><span class="severity-tag medium">medium</span></td>
+        <td>0</td>
+        <td>CIS M365 v6 5.1.6.2</td>
+      </tr>
+<tr>
+        <td>
+          Teams App Catalog Review
+          
+        </td>
+        <td>Microsoft Teams</td>
+        <td><span class="badge pass">PASS</span></td>
+        <td><span class="severity-tag medium">medium</span></td>
+        <td>0</td>
+        <td>CIS M365 v6 5.1.6.2</td>
+      </tr>
+<tr>
+        <td>
+          Teams Meeting Policies (PowerShell Required)
+          <details>
+              <summary>2 findings</summary>
+              <div class="finding"><strong>powershell-stub</strong> — Run: Get-CsTeamsMeetingPolicy | Select-Object Identity, AllowAnonymousUsersToStartMeeting, AutoAdmittedUsers, AllowCloudRecording, DetectSensitiveContentDuringScreenSharing, AllowMeetNow</div>
+              <div class="finding"><strong>remediation</strong> — Install-Module MicrosoftTeams; Connect-MicrosoftTeams; then run the above command to audit meeting policies</div>
+              
+            </details>
+        </td>
+        <td>Microsoft Teams</td>
+        <td><span class="badge warn">WARN</span></td>
+        <td><span class="severity-tag info">info</span></td>
+        <td>2</td>
+        <td>CIS M365 v6 8.5.1</td>
+      </tr>
+<tr>
+        <td>
+          Teams Guest Access Settings (PowerShell Required)
+          <details>
+              <summary>2 findings</summary>
+              <div class="finding"><strong>powershell-stub</strong> — Run: Get-CsTeamsGuestMeetingConfiguration | Select-Object Identity, AllowIPVideo, ScreenSharingMode; Get-CsTeamsGuestCallingConfiguration | Select-Object Identity, AllowPrivateCalling</div>
+              <div class="finding"><strong>remediation</strong> — Install-Module MicrosoftTeams; Connect-MicrosoftTeams; then run the above commands to audit guest meeting/calling settings</div>
+              
+            </details>
+        </td>
+        <td>Microsoft Teams</td>
+        <td><span class="badge warn">WARN</span></td>
+        <td><span class="severity-tag info">info</span></td>
+        <td>2</td>
+        <td>CIS M365 v6 5.1.6.2</td>
+      </tr>
+<tr>
+        <td>
+          Teams App Permission Policies (PowerShell Required)
+          <details>
+              <summary>2 findings</summary>
+              <div class="finding"><strong>powershell-stub</strong> — Run: Get-CsTeamsAppPermissionPolicy | Select-Object Identity, DefaultCatalogAppsType, GlobalCatalogAppsType, PrivateCatalogAppsType</div>
+              <div class="finding"><strong>remediation</strong> — Install-Module MicrosoftTeams; Connect-MicrosoftTeams; then run the above command to audit app permission policies</div>
+              
+            </details>
+        </td>
+        <td>Microsoft Teams</td>
+        <td><span class="badge warn">WARN</span></td>
+        <td><span class="severity-tag info">info</span></td>
+        <td>2</td>
+        <td>CIS M365 v6 5.1.6.2</td>
+      </tr>
+<tr>
+        <td>
+          Exchange Transport Rules (PowerShell Required)
+          <details>
+              <summary>2 findings</summary>
+              <div class="finding"><strong>powershell-stub</strong> — Run: Get-TransportRule | Select-Object Name, State, Mode, Priority, SentToScope, FromScope — look for rules forwarding mail externally or bypassing DLP</div>
+              <div class="finding"><strong>remediation</strong> — Install-Module ExchangeOnlineManagement; Connect-ExchangeOnline; then run the above command to audit transport rules</div>
+              
+            </details>
+        </td>
+        <td>Exchange Online</td>
+        <td><span class="badge warn">WARN</span></td>
+        <td><span class="severity-tag info">info</span></td>
+        <td>2</td>
+        <td>CIS M365 v6 2.1.1</td>
+      </tr>
+<tr>
+        <td>
+          Exchange Anti-Spam &amp; Anti-Phish Policies (PowerShell Required)
+          <details>
+              <summary>3 findings</summary>
+              <div class="finding"><strong>powershell-stub:anti-spam</strong> — Run: Get-HostedContentFilterPolicy | Select-Object Identity, HighConfidencePhishAction, PhishSpamAction, BulkThreshold, MarkAsSpamBulkMail</div>
+              <div class="finding"><strong>powershell-stub:anti-phish</strong> — Run: Get-AntiPhishPolicy | Select-Object Identity, Enabled, PhishThresholdLevel, EnableMailboxIntelligenceProtection, ImpersonationProtectionState, TargetedUserProtectionAction</div>
+              <div class="finding"><strong>remediation</strong> — Install-Module ExchangeOnlineManagement; Connect-ExchangeOnline; then run the above commands to audit anti-spam and anti-phish policies</div>
+              
+            </details>
+        </td>
+        <td>Exchange Online</td>
+        <td><span class="badge warn">WARN</span></td>
+        <td><span class="severity-tag info">info</span></td>
+        <td>3</td>
+        <td>CIS M365 v6 2.1.4</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p class="footer">Generated by Office 365 Audit Framework</p>
+
+  <script>
+    // Severity doughnut
+    new Chart(document.getElementById('severityChart'), {
+      type: 'doughnut',
+      data: {
+        labels: ['Critical', 'High', 'Medium', 'Low', 'Info'],
+        datasets: [{
+          data: [9, 19, 2, 0, 11],
+          backgroundColor: ['#D32F2F', '#E65100', '#F9A825', '#1565C0', '#757575']
+        }]
+      },
+      options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
+    });
+
+    // Service bar chart
+    new Chart(document.getElementById('serviceChart'), {
+      type: 'bar',
+      data: {
+        labels: ["Entra ID","SharePoint Online","Exchange Online","Microsoft Teams"],
+        datasets: [{
+          label: 'Findings',
+          data: [27,3,5,6],
+          backgroundColor: ["#1565C0","#9E9E9E","#E65100","#9E9E9E"]
+        }]
+      },
+      options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
+    });
+
+    // Category bar chart
+    new Chart(document.getElementById('categoryChart'), {
+      type: 'bar',
+      data: {
+        labels: ["identity","data-protection","access-control","threat-protection"],
+        datasets: [{
+          label: 'Findings',
+          data: [27,3,6,5],
+          backgroundColor: '#1565C0'
+        }]
+      },
+      options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
+    });
+
+    // Results overview doughnut
+    new Chart(document.getElementById('resultsChart'), {
+      type: 'doughnut',
+      data: {
+        labels: ['Pass', 'Fail', 'Warn', 'Error'],
+        datasets: [{
+          data: [4, 2, 9, 0],
+          backgroundColor: ['#2E7D32', '#D32F2F', '#F9A825', '#333']
+        }]
+      },
+      options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
+    });
+  </script>
+</body>
+</html>
