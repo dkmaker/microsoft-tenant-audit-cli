@@ -2279,6 +2279,38 @@
         }
       ],
       "closedAt": "2026-03-12T15:22:21.762Z"
+    },
+    {
+      "id": "qza7yol0",
+      "type": "chore",
+      "title": "Generate PNG screenshot of example HTML report for documentation",
+      "description": "Render `examples/report.html` to a PNG image with all sections expanded. Add the screenshot to the repo for use in README/documentation. Use a headless browser (Puppeteer) to capture a full-page screenshot.",
+      "status": "closed",
+      "linkedIssueIds": [],
+      "questions": [],
+      "research": [
+        {
+          "type": "comment",
+          "content": "Use Puppeteer to open the HTML, expand all `<details>` elements, then take a full-page screenshot. Check if puppeteer is available or needs installing.",
+          "addedAt": "2026-03-12T15:24:30.438Z"
+        }
+      ],
+      "createdAt": "2026-03-12T15:24:23.262Z",
+      "updatedAt": "2026-03-12T15:28:40.083Z",
+      "autoValidation": {
+        "type": "agent",
+        "strategy": "Verify PNG file exists in examples/ and is a valid image of reasonable size"
+      },
+      "closeMessage": "Generated full-page PNG screenshot of the HTML dashboard with all sections expanded using Puppeteer. Added to examples/ and embedded in README.",
+      "closeReason": "done",
+      "validations": [
+        {
+          "criterion": "Render `examples/report.html` to a PNG image with all sections expanded. Add the screenshot to the repo for use in README/documentation. Use a headless browser (Puppeteer) to capture a full-page screenshot.",
+          "evidence": "✅ examples/report-preview.png exists (698KB, 1400x4892 PNG)\n✅ Valid PNG image with all sections expanded (charts, check details, findings, remediation)\n✅ README updated with inline image preview",
+          "met": true
+        }
+      ],
+      "closedAt": "2026-03-12T15:28:40.083Z"
     }
   ],
   "categories": [

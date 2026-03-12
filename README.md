@@ -165,6 +165,10 @@ The [`examples/`](examples/) directory contains an anonymized sample report so y
 - [`examples/report.json`](examples/report.json) — Machine-readable JSON report
 - [`examples/report.html`](examples/report.html) — Interactive HTML dashboard (open in any browser)
 
+### Dashboard Preview
+
+![HTML Dashboard Preview](examples/report-preview.png)
+
 ## Development
 
 See [DEVELOPMENT.md](DEVELOPMENT.md) for build instructions, project structure, and how to add new checks.
