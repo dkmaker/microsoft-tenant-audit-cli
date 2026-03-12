@@ -28,6 +28,23 @@ A command-line security audit tool for Microsoft 365 tenants. Scans Entra ID, Ex
 
 > 💡 See Microsoft's guide on [registering an application](https://learn.microsoft.com/en-us/entra/identity-platform/quickstart-register-app) and [granting admin consent](https://learn.microsoft.com/en-us/entra/identity-platform/v2-permissions-and-consent).
 
+### Automated Setup (PowerShell 7)
+
+The included `setup.ps1` script creates the app registration, assigns all permissions, grants admin consent, and outputs your `.env` credentials — all in one step:
+
+```powershell
+# Requires PowerShell 7+ and Global Admin rights
+./setup.ps1
+```
+
+The script will:
+1. Install the `Microsoft.Graph` module if missing
+2. Prompt you to sign in as a Global Administrator
+3. Create the app registration with all 15 required permissions
+4. Grant admin consent
+5. Generate a client secret (1 year expiry)
+6. Print `TENANT_ID`, `CLIENT_ID`, and `CLIENT_SECRET` for your `.env` file
+
 ## Installation
 
 ```bash

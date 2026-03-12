@@ -787,7 +787,9 @@
       "title": "Create Azure App Registration & Document AZ CLI Setup",
       "description": "## Goal\n1. Create an Entra ID app registration via `az cli` with all required read-only permissions for the M365 audit framework\n2. Grant admin consent for the permissions\n3. Create a client secret\n4. Document the full process as a reusable asset so future sessions can replicate/recover\n\n## Permissions Required (from asset `1a8tuhf5`)\nGraph Application Permissions:\n- User.Read.All, RoleManagement.Read.Directory, Policy.Read.All\n- UserAuthenticationMethod.Read.All, Application.Read.All\n- MailboxSettings.Read, Mail.Read\n- SharePointTenantSettings.Read.All, Sites.Read.All, Sites.FullControl.All, Files.Read.All\n- Team.ReadBasic.All, TeamMember.Read.All, OnlineMeetings.Read.All, AppCatalog.Read.All\n\nEntra RBAC: Exchange Administrator (for Exchange Admin API)\n\n## Deliverables\n- Working app registration with all permissions + admin consent\n- .env file with credentials\n- Asset documenting the full `az cli` setup process for recovery",
       "status": "closed",
-      "linkedIssueIds": [],
+      "linkedIssueIds": [
+        "86m12dvn"
+      ],
       "questions": [],
       "research": [
         {
@@ -802,7 +804,7 @@
         }
       ],
       "createdAt": "2026-03-12T12:33:32.042Z",
-      "updatedAt": "2026-03-12T12:37:43.316Z",
+      "updatedAt": "2026-03-12T15:14:22.283Z",
       "autoValidation": {
         "type": "agent",
         "strategy": "Verify app registration exists via az cli and permissions are granted"
@@ -2210,6 +2212,41 @@
         }
       ],
       "closedAt": "2026-03-12T15:08:03.928Z"
+    },
+    {
+      "id": "86m12dvn",
+      "type": "feature",
+      "title": "Add PowerShell 7 app registration setup script to README",
+      "description": "Add a PowerShell 7 script section to the README (or a linked `setup.ps1`) that creates the Entra ID app registration with all required permissions and grants admin consent. This replaces the current \"go to the portal\" approach with a copy-paste script for IT admins.\n\nUses `Connect-MgGraph` / `New-MgApplication` / `New-MgServicePrincipal` from the Microsoft.Graph PowerShell module. All 15 permission role IDs are already documented in asset `n2mzjarb`.",
+      "status": "closed",
+      "epicId": "zrtsptlu",
+      "linkedIssueIds": [
+        "20eqm1x0"
+      ],
+      "questions": [],
+      "research": [
+        {
+          "type": "reference",
+          "content": "**PowerShell 7 + Microsoft.Graph module approach:**\n- `Install-Module Microsoft.Graph -Scope CurrentUser`\n- `Connect-MgGraph -Scopes \"Application.ReadWrite.All\"` (interactive admin login)\n- `New-MgApplication` to create the app\n- `New-MgServicePrincipal` to create the SP\n- `Update-MgApplication` to set `requiredResourceAccess` with all 15 permission role IDs\n- `New-MgServicePrincipalAppRoleAssignment` to grant admin consent per role\n- `Add-MgApplicationPassword` to create client secret\n\nAll 15 role IDs available in asset `n2mzjarb`.",
+          "addedAt": "2026-03-12T15:14:22.289Z"
+        }
+      ],
+      "createdAt": "2026-03-12T15:14:14.549Z",
+      "updatedAt": "2026-03-12T15:15:54.374Z",
+      "autoValidation": {
+        "type": "agent",
+        "strategy": "Verify setup script or README section contains PowerShell 7 commands for app registration creation, permission assignment, and admin consent"
+      },
+      "closeMessage": "Added `setup.ps1` — a fully automated PowerShell 7 script that creates the Entra ID app registration, assigns all 15 permissions, grants admin consent, creates a client secret, and outputs .env credentials. README updated with setup instructions.",
+      "closeReason": "done",
+      "validations": [
+        {
+          "criterion": "Add a PowerShell 7 script section to the README (or a linked `setup.ps1`) that creates the Entra ID app registration with all required permissions and grants admin consent. This replaces the current \"go to the portal\" approach with a copy-paste script for IT admins.\n\nUses `Connect-MgGraph` / `New-MgApplication` / `New-MgServicePrincipal` from the Microsoft.Graph PowerShell module. All 15 permission role IDs are already documented in asset `n2mzjarb`.",
+          "evidence": "✅ setup.ps1 exists (137 lines) with `#!/usr/bin/env pwsh` shebang\n✅ Contains all key PS7 commands: Connect-MgGraph, New-MgApplication, New-MgServicePrincipal, New-MgServicePrincipalAppRoleAssignment, Add-MgApplicationPassword\n✅ All 15 permission role IDs included with admin consent loop\n✅ README references setup.ps1 in new \"Automated Setup (PowerShell 7)\" section (2 references)",
+          "met": true
+        }
+      ],
+      "closedAt": "2026-03-12T15:15:54.374Z"
     }
   ],
   "categories": [
