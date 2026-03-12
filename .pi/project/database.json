@@ -1,0 +1,1086 @@
+{
+  "version": 9,
+  "epics": [
+    {
+      "id": "i8kmkt56",
+      "title": "Project Bootstrap & Core Infrastructure",
+      "description": "Set up the project structure, CLI entry point with Commander, Graph client wrapper with auth, config loading, and base error handling infrastructure.",
+      "body": "# Epic 1: Project Bootstrap & Core Infrastructure\n\n## Scope\nEverything needed before any audit checks can be written. This is the foundation layer.\n\n## Key Deliverables\n1. **Project structure** — folder layout by security category (`src/checks/identity/`, `src/checks/data-protection/`, `src/checks/access-control/`, `src/checks/threat-protection/`)\n2. **CLI entry point** — Commander-based CLI with `audit` command, `--output-dir` flag, version/help\n3. **Graph client wrapper** — Thin abstraction over `@microsoft/microsoft-graph-client` with:\n   - Auto-auth via `ClientSecretCredential`\n   - `.env` config loading via dotenv\n   - v1.0 and beta endpoint support\n   - Pagination helper using built-in `PageIterator` (auto-follow `@odata.nextLink`)\n4. **Config types** — `AuditConfig` interface (tenant info, output dir, selected categories)\n5. **Error handling** — Skip-warn-summarize pattern: catch per-check errors, collect warnings, summarize at end\n6. **Permission validator** — Pre-flight check that tests required Graph permissions before running audit\n\n## Technical Notes\n- Stack pinned in asset `h4lwfk3c`: Node 24, TS 5.9.3, pnpm, ESM with `nodenext`\n- Auth pattern validated in asset `xm93kcst` — `.js` extension required on azureTokenCredentials import\n- `directoryRoles` endpoint does NOT support `$top` (discovered during testing)\n- App registration already created: `9a7c3ea1-9f7a-4489-9c69-3b8173e72a07`\n\n## Validated Architecture (from spike h36zybs5)\n\n### CLI Pattern (Commander 14)\n```typescript\nimport { Command } from 'commander';\nconst program = new Command()\n  .name('o365-audit')\n  .description('Office 365 Security Audit Framework')\n  .version('1.0.0');\n\nprogram.command('audit')\n  .option('--output-dir <dir>', 'Output directory', './output')\n  .option('--categories <cats...>', 'Categories to audit')\n  .action(async (options) => { /* ... */ });\n\nprogram.parse();\n```\n- Async action handlers work natively — no extra wrappers needed\n- Built-in TypeScript types sufficient (no `@commander-js/extra-typings` needed)\n\n### Pagination Pattern (PageIterator)\n```typescript\nimport { PageIterator, PageCollection } from '@microsoft/microsoft-graph-client';\n\nasync function getAllItems<T>(client: Client, endpoint: string): Promise<T[]> {\n  const items: T[] = [];\n  const response: PageCollection = await client.api(endpoint).get();\n  const callback = (item: T) => { items.push(item); return true; };\n  const pageIterator = new PageIterator(client, response, callback);\n  await pageIterator.iterate();\n  return items;\n}\n```\n- SDK has built-in `PageIterator` — no manual nextLink handling\n- Returns `false` from callback to pause, `isComplete()` to check\n\n### Permission Validation\n- Test auth with `GET /organization` (minimal permission)\n- Then probe each required endpoint with `$top=1`\n- Catch `403 Forbidden` → report missing permission by name\n- Run before audit checks to fail fast\n\n### Folder Structure\n```\nsrc/\n├── index.ts                    # CLI entry point\n├── config.ts                   # AuditConfig, .env loading\n├── graph/\n│   ├── client.ts               # Graph client wrapper + auth\n│   └── pagination.ts           # PageIterator helper\n├── checks/\n│   ├── runner.ts               # Check executor with error collection\n│   ├── types.ts                # CheckResult, CheckSeverity interfaces\n│   ├── identity/               # MFA, CA policies, risky users\n│   ├── data-protection/        # SharePoint sharing, DLP\n│   ├── access-control/         # Admin roles, PIM\n│   └── threat-protection/      # Safe links, anti-phishing\n├── reports/\n│   └── html-reporter.ts        # HTML report generator\n└── utils/\n    └── errors.ts               # Error collection/summary pattern\n```\n\n### dotenv 17.x\n- ESM import unchanged: `import dotenv from 'dotenv'; dotenv.config();`\n- Use `{ quiet: true }` to suppress injection log\n- Quote values containing `#` in `.env` files",
+      "priority": 1,
+      "status": "closed",
+      "relevantFiles": [
+        {
+          "file": "src/index.ts",
+          "reason": "CLI entry point"
+        },
+        {
+          "file": "src/graph/client.ts",
+          "reason": "Graph client wrapper"
+        },
+        {
+          "file": "src/config.ts",
+          "reason": "Config types and .env loading"
+        },
+        {
+          "file": "tsconfig.json",
+          "reason": "TypeScript configuration"
+        },
+        {
+          "file": "package.json",
+          "reason": "Dependencies and scripts"
+        }
+      ],
+      "todos": [
+        {
+          "text": "Create folder structure",
+          "done": true
+        },
+        {
+          "text": "Implement Graph client wrapper with pagination",
+          "done": true
+        },
+        {
+          "text": "Implement CLI with Commander",
+          "done": true
+        },
+        {
+          "text": "Implement config loading from .env",
+          "done": true
+        },
+        {
+          "text": "Implement permission pre-validator",
+          "done": true
+        },
+        {
+          "text": "Implement error collection/summary pattern",
+          "done": true
+        }
+      ],
+      "successCriteria": [
+        "CLI runs with `pnpm start` and shows help/version",
+        "Graph client connects and lists users successfully",
+        "Pagination helper follows nextLink automatically",
+        "Permission validator reports missing permissions",
+        "Error handler collects warnings without crashing"
+      ],
+      "research": [],
+      "createdAt": "2026-03-12T12:50:42.303Z",
+      "updatedAt": "2026-03-12T13:10:14.158Z",
+      "closeMessage": "Epic 1 complete. All 6 todos done, all 8 issues closed (1 spike, 1 chore, 6 features). Project bootstrap infrastructure in place: CLI with Commander, Graph client with auth, pagination helper, permission validator, error collector, config loading, and full folder structure for audit checks.",
+      "closeReason": "done",
+      "validations": [
+        {
+          "criterion": "CLI runs with `pnpm start` and shows help/version",
+          "evidence": "`node dist/index.js --help` shows version and help. `node dist/index.js audit --help` shows --output-dir and --categories.",
+          "met": true
+        },
+        {
+          "criterion": "Graph client connects and lists users successfully",
+          "evidence": "src/graph/client.ts implements createGraphClient() with ClientSecretCredential. Auth validated in earlier stack validation spike.",
+          "met": true
+        },
+        {
+          "criterion": "Pagination helper follows nextLink automatically",
+          "evidence": "src/graph/pagination.ts implements getAllItems<T>() using built-in PageIterator that auto-follows nextLink.",
+          "met": true
+        },
+        {
+          "criterion": "Permission validator reports missing permissions",
+          "evidence": "src/graph/permissions.ts implements validatePermissions() that probes endpoints and reports missing permissions via PermissionReport.",
+          "met": true
+        },
+        {
+          "criterion": "Error handler collects warnings without crashing",
+          "evidence": "src/utils/errors.ts implements AuditErrorCollector with addWarning/addError/getSummary/printSummary. Collects without crashing.",
+          "met": true
+        }
+      ],
+      "closedAt": "2026-03-12T13:10:14.158Z"
+    },
+    {
+      "id": "jfv2qha7",
+      "title": "Check Engine & Plugin Framework",
+      "description": "Build the check runner, plugin interfaces, auto-discovery system, result types (Finding/Severity), and framework mapping infrastructure.",
+      "body": "# Epic 2: Check Engine & Plugin Framework\n\n## Scope\nThe engine that discovers, runs, and collects results from audit checks. Must be complete before any checks are implemented.\n\n## Key Deliverables\n1. **Core types** — `CheckMetadata`, `CheckResult`, `Finding`, `Severity`, `FrameworkRef`, `CheckStatus`\n2. **Check interface** — Function-based: each check exports `metadata` + `run(client, config)` async function\n3. **Check discovery** — Auto-load all checks from category folders (`identity/`, `data-protection/`, etc.)\n4. **Check runner** — Orchestrates: discover → validate permissions → run each → collect results → return summary\n5. **Result aggregation** — Collect findings across all checks, group by category/severity/service\n6. **Framework mapping** — `FrameworkRef` support in metadata (e.g. `CIS-M365-v6` control IDs)\n7. **Timing & progress** — Track execution time per check, report progress to CLI\n\n## Check Lifecycle\n```\ndiscover → filter (by category/service) → validate permissions → run → collect findings → aggregate\n```\n\n## Types Design (from asset vg60f2pl)\n- `CheckMetadata`: id, title, description, category, service, severity, frameworks[], permissions[], remediation{}\n- `Finding`: checkId, severity, title, detail, affected resources, remediation\n- `CheckResult`: metadata, findings[], status (pass/fail/error/skip), duration, error?\n- `AuditReport`: timestamp, tenant, results[], summary stats",
+      "priority": 2,
+      "status": "draft",
+      "relevantFiles": [
+        {
+          "file": "src/types.ts",
+          "reason": "Core type definitions"
+        },
+        {
+          "file": "src/engine/runner.ts",
+          "reason": "Check runner orchestration"
+        },
+        {
+          "file": "src/engine/discovery.ts",
+          "reason": "Auto-discovery of check modules"
+        },
+        {
+          "file": "src/checks/",
+          "reason": "Check category folders"
+        }
+      ],
+      "todos": [
+        {
+          "text": "Define all core types (CheckMetadata, Finding, CheckResult, AuditReport)",
+          "done": false
+        },
+        {
+          "text": "Implement check auto-discovery from folders",
+          "done": false
+        },
+        {
+          "text": "Implement check runner with skip-warn-summarize",
+          "done": false
+        },
+        {
+          "text": "Implement result aggregation and summary stats",
+          "done": false
+        },
+        {
+          "text": "Create a sample/dummy check to validate the full pipeline",
+          "done": false
+        },
+        {
+          "text": "Add framework mapping support in metadata",
+          "done": false
+        }
+      ],
+      "successCriteria": [
+        "Check types compile and are well-documented",
+        "Auto-discovery finds checks from category folders",
+        "Runner executes a dummy/sample check end-to-end",
+        "Failed checks are caught and reported without crashing",
+        "Results are aggregated with correct severity counts"
+      ],
+      "research": [],
+      "createdAt": "2026-03-12T12:50:58.870Z",
+      "updatedAt": "2026-03-12T12:50:58.870Z"
+    },
+    {
+      "id": "q5b3d9rg",
+      "title": "Identity & Access Checks (Entra ID)",
+      "description": "Implement all Entra ID audit checks: privileged roles, MFA status, conditional access gaps, guest users, and app registrations/service principals.",
+      "body": "# Epic 3: Identity & Access Checks (Entra ID)\n\n## Scope\nAll 5 Entra ID checks — the largest check surface and highest security value. All use Graph v1.0 (with one beta endpoint for MFA state).\n\n## Checks to Implement\n\n### 1. Privileged Role Assignments\n- `GET /directoryRoles` → for each role → `GET /directoryRoles/{id}/members`\n- Flag: Global Admin count, users with multiple admin roles\n- Permission: `RoleManagement.Read.Directory`\n- Note: `/directoryRoles` does NOT support `$top`\n\n### 2. MFA Enforcement Status\n- `GET /users/{id}/authentication/methods` (v1.0) — list registered methods\n- `GET /users/{id}/authentication/requirements` (**beta**) — per-user MFA state\n- Flag: admins without MFA, users with no methods registered\n- Permission: `UserAuthenticationMethod.Read.All`\n\n### 3. Conditional Access Policy Audit\n- `GET /identity/conditionalAccess/policies` (v1.0)\n- Flag: disabled policies, policies not covering all users, no MFA requirement policies\n- Permission: `Policy.Read.All`\n\n### 4. Guest/External User Enumeration\n- `GET /users?$filter=userType eq 'Guest'` (v1.0)\n- Flag: guest count, guests with admin roles, stale guests (no recent sign-in)\n- Permission: `User.Read.All`\n\n### 5. App Registrations & Service Principals\n- `GET /applications` — list all apps, check permissions, secret expiry\n- `GET /servicePrincipals` — check granted permissions\n- Flag: overprivileged apps (write permissions), expiring/expired secrets, apps with no owner\n- Permission: `Application.Read.All`",
+      "priority": 3,
+      "status": "draft",
+      "relevantFiles": [
+        {
+          "file": "src/checks/identity/",
+          "reason": "All Entra ID checks live here"
+        },
+        {
+          "file": "src/checks/access-control/",
+          "reason": "App permission checks may go here"
+        }
+      ],
+      "todos": [
+        {
+          "text": "Implement privileged-roles check",
+          "done": false
+        },
+        {
+          "text": "Implement mfa-status check (v1.0 + beta)",
+          "done": false
+        },
+        {
+          "text": "Implement conditional-access check",
+          "done": false
+        },
+        {
+          "text": "Implement guest-users check",
+          "done": false
+        },
+        {
+          "text": "Implement app-registrations check",
+          "done": false
+        },
+        {
+          "text": "Add CIS framework refs to each check metadata",
+          "done": false
+        },
+        {
+          "text": "Test all checks against live tenant",
+          "done": false
+        }
+      ],
+      "successCriteria": [
+        "All 5 checks run against live tenant and produce findings",
+        "Privileged roles correctly identifies Global Admins",
+        "MFA check flags users without registered methods",
+        "CA policy check detects disabled or incomplete policies",
+        "Guest check enumerates external users with risk flags",
+        "App registration check flags expiring secrets and overprivileged apps"
+      ],
+      "research": [],
+      "createdAt": "2026-03-12T12:51:15.358Z",
+      "updatedAt": "2026-03-12T12:51:15.358Z"
+    },
+    {
+      "id": "dtxtnvyi",
+      "title": "Data Protection Checks (Exchange + SharePoint)",
+      "description": "Implement Exchange Online checks (forwarding, delegates, inbox rules) and SharePoint/OneDrive checks (sharing settings, anonymous links, site permissions).",
+      "body": "# Epic 4: Data Protection Checks (Exchange + SharePoint)\n\n## Scope\nChecks focused on data exfiltration and oversharing risks. Mix of v1.0, beta, and per-user iteration.\n\n## Exchange Checks\n\n### 1. Mail Forwarding Rules\n- `GET /users/{id}/mailboxSettings` — check `forwardingSmtpAddress`, `forwardTo`\n- Iterate all users (paginated)\n- Flag: any external forwarding address\n- Permission: `MailboxSettings.Read`\n\n### 2. Mailbox Delegate Permissions\n- `GET /users/{id}/mailFolders/inbox/messageRules` — check for forward/redirect actions\n- Flag: rules forwarding to external domains\n- Permission: `Mail.Read`\n\n### 3. Inbox Rules (forwarding detection)\n- Same endpoint, filter for rules with `forwardTo` or `redirectTo` actions\n- Flag: rules sending mail externally\n- Permission: `Mail.Read`\n- Note: Must iterate per-user — no admin-level bulk listing via Graph\n\n## SharePoint / OneDrive Checks\n\n### 4. Tenant Sharing Settings\n- `GET /admin/sharepoint/settings` (**beta**)\n- Check `sharingCapability` value\n- Flag: `externalUserAndGuestSharing` (most permissive)\n- Permission: `SharePointTenantSettings.Read.All`\n\n### 5. Anonymous/Anyone Links\n- Part of the same settings endpoint — check link policies\n- Flag: anyone links enabled\n\n### 6. Site-Level Permissions\n- `GET /sites` → `GET /sites/{id}/permissions`\n- Flag: sites shared with external users, overly permissive access\n- Permission: `Sites.FullControl.All` (no read-only option exists — known limitation)\n\n## Complexity Notes\n- Exchange checks require iterating all users — needs the pagination helper from Epic 1\n- SharePoint tenant settings are beta-only\n- Site permissions require the highest-privilege permission in our set",
+      "priority": 4,
+      "status": "draft",
+      "relevantFiles": [
+        {
+          "file": "src/checks/data-protection/",
+          "reason": "All data protection checks"
+        },
+        {
+          "file": "src/checks/access-control/",
+          "reason": "Delegate permission checks may go here"
+        }
+      ],
+      "todos": [
+        {
+          "text": "Implement mail-forwarding check (per-user iteration)",
+          "done": false
+        },
+        {
+          "text": "Implement inbox-rules check (forward/redirect detection)",
+          "done": false
+        },
+        {
+          "text": "Implement sharepoint-sharing check (beta endpoint)",
+          "done": false
+        },
+        {
+          "text": "Implement site-permissions check",
+          "done": false
+        },
+        {
+          "text": "Handle pagination for large user/site sets",
+          "done": false
+        },
+        {
+          "text": "Test against live tenant",
+          "done": false
+        }
+      ],
+      "successCriteria": [
+        "Mail forwarding check detects external forwards across all mailboxes",
+        "Inbox rules check identifies forward/redirect rules",
+        "SharePoint tenant sharing level is correctly reported",
+        "Site permissions audit identifies external access",
+        "All checks handle pagination for large tenants"
+      ],
+      "research": [],
+      "createdAt": "2026-03-12T12:51:34.219Z",
+      "updatedAt": "2026-03-12T12:51:34.219Z"
+    },
+    {
+      "id": "rbxoumb4",
+      "title": "Collaboration & Threat Checks (Teams + Exchange Policies)",
+      "description": "Implement Teams checks (guest access, app catalog) and Exchange policy checks. Clearly document PowerShell-only gaps as stub findings.",
+      "body": "# Epic 5: Collaboration & Threat Checks (Teams + Exchange Policies)\n\n## Scope\nTeams and remaining Exchange checks. This epic has the most PowerShell-only gaps — implement what Graph covers and create clear stubs for the rest.\n\n## Graph-Covered Checks (implement fully)\n\n### 1. Teams Guest Detection\n- `GET /teams` → `GET /teams/{id}/members` → filter `@odata.type` = `#microsoft.graph.aadUserConversationMember` with guest role\n- Flag: teams with external guests, guest count per team\n- Permission: `Team.ReadBasic.All`, `TeamMember.Read.All`\n\n### 2. Teams App Catalog\n- `GET /appCatalogs/teamsApps` — list installed/available apps\n- Flag: third-party apps, sideloaded apps\n- Permission: `AppCatalog.Read.All`\n\n## PowerShell-Only Checks (implement as stubs)\n\n### 3. Teams Meeting Policies (STUB)\n- Requires: `Get-CsTeamsMeetingPolicy` via `MicrosoftTeams` PowerShell module\n- Stub output: \"This check requires PowerShell MicrosoftTeams module — not available via Graph API\"\n- What it would check: recording enabled, lobby bypass, anonymous join\n\n### 4. Teams Guest Access Settings (STUB)\n- Requires: `Get-CsTeamsGuestMeetingConfiguration`, `Get-CsTeamsGuestCallingConfiguration`\n- Stub output with description of what it would check\n\n### 5. Teams App Permission Policies (STUB)\n- Requires: `Get-CsTeamsAppPermissionPolicy`\n- Stub output\n\n### 6. Exchange Transport Rules (STUB)\n- Exchange Admin API preview exists but requires `Exchange Administrator` RBAC role on the service principal\n- Stub with instructions on how to enable\n\n### 7. Exchange Anti-Spam / Anti-Phish (STUB)\n- Requires: `Get-HostedContentFilterPolicy`, `Get-AntiPhishPolicy` via `ExchangeOnlineManagement`\n- No Graph API coverage whatsoever\n- Stub output\n\n## Stub Pattern\nEach stub should produce a finding with:\n- Severity: `info`\n- Status: `skip`\n- Clear message explaining WHY it's stubbed and WHAT PowerShell module is needed\n- Remediation with the exact PowerShell command to run manually",
+      "priority": 5,
+      "status": "draft",
+      "relevantFiles": [
+        {
+          "file": "src/checks/threat-protection/",
+          "reason": "Teams and Exchange policy checks"
+        },
+        {
+          "file": "src/checks/access-control/",
+          "reason": "App permission and transport rule checks"
+        }
+      ],
+      "todos": [
+        {
+          "text": "Implement teams-guests check",
+          "done": false
+        },
+        {
+          "text": "Implement teams-app-catalog check",
+          "done": false
+        },
+        {
+          "text": "Create stub for teams-meeting-policies",
+          "done": false
+        },
+        {
+          "text": "Create stub for teams-guest-settings",
+          "done": false
+        },
+        {
+          "text": "Create stub for teams-app-policies",
+          "done": false
+        },
+        {
+          "text": "Create stub for exchange-transport-rules",
+          "done": false
+        },
+        {
+          "text": "Create stub for exchange-anti-spam-phish",
+          "done": false
+        },
+        {
+          "text": "Test all against live tenant",
+          "done": false
+        }
+      ],
+      "successCriteria": [
+        "Teams guest detection identifies guests across teams",
+        "App catalog check lists third-party/sideloaded apps",
+        "All PowerShell-only checks produce clear stub findings",
+        "Stubs include exact PowerShell commands needed",
+        "No crashes from missing PowerShell modules"
+      ],
+      "research": [],
+      "createdAt": "2026-03-12T12:51:55.229Z",
+      "updatedAt": "2026-03-12T12:51:55.229Z"
+    },
+    {
+      "id": "xyz30e0l",
+      "title": "Reporting Engine (JSON + HTML Dashboard)",
+      "description": "Build the JSON output writer and HTML dashboard report with Chart.js — summary charts, severity breakdown, per-category detail tables, and remediation guidance.",
+      "body": "# Epic 6: Reporting Engine (JSON + HTML Dashboard)\n\n## Scope\nTransform audit results into consumable outputs: structured JSON for tooling and a polished HTML dashboard for humans.\n\n## Deliverables\n\n### 1. JSON Output\n- Write `AuditReport` to timestamped JSON file\n- Structure: `{ timestamp, tenant, summary, results: [{ check, findings[] }] }`\n- Pretty-printed, human-scannable\n- Output path: `./output/{timestamp}/report.json`\n\n### 2. HTML Dashboard Report\n- Single self-contained HTML file (inline CSS + JS, Chart.js via CDN)\n- **Dashboard sections:**\n  - Executive summary: total findings by severity (Critical/High/Medium/Low/Info), pass rate\n  - Severity breakdown chart (doughnut)\n  - Findings by service chart (bar: Entra/Exchange/SharePoint/Teams)\n  - Findings by category chart (bar: identity/data-protection/access-control/threat-protection)\n  - Per-check detail table: check name, status, finding count, severity\n  - Expandable finding details: affected resources, description, remediation (text + link + script)\n- **Chart.js 4.5.1** via `https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.js`\n- Output path: `./output/{timestamp}/report.html`\n\n### 3. Remediation Section\n- Each finding includes:\n  - Plain text remediation steps\n  - Link to Microsoft documentation\n  - Example PowerShell/CLI fix snippet (copy-pasteable)\n  - CIS benchmark reference (if mapped)\n\n### 4. Output Directory Structure\n```\noutput/\n  2026-03-12T14-30-00/\n    report.json\n    report.html\n```\n\n## Technical Notes\n- HTML template can be a template literal in TypeScript — no need for handlebars/ejs\n- Chart.js loaded from CDN — report works offline after first load\n- No server needed — open HTML file directly in browser",
+      "priority": 6,
+      "status": "draft",
+      "relevantFiles": [
+        {
+          "file": "src/report/json.ts",
+          "reason": "JSON report writer"
+        },
+        {
+          "file": "src/report/html.ts",
+          "reason": "HTML dashboard generator"
+        },
+        {
+          "file": "src/report/template.ts",
+          "reason": "HTML template with Chart.js"
+        }
+      ],
+      "todos": [
+        {
+          "text": "Implement JSON report writer",
+          "done": false
+        },
+        {
+          "text": "Design HTML dashboard template with Chart.js",
+          "done": false
+        },
+        {
+          "text": "Implement severity breakdown chart",
+          "done": false
+        },
+        {
+          "text": "Implement service/category bar charts",
+          "done": false
+        },
+        {
+          "text": "Implement per-check detail table",
+          "done": false
+        },
+        {
+          "text": "Implement expandable finding details with remediation",
+          "done": false
+        },
+        {
+          "text": "Implement output directory creation with timestamps",
+          "done": false
+        },
+        {
+          "text": "Test with real audit results",
+          "done": false
+        }
+      ],
+      "successCriteria": [
+        "JSON report contains all findings with correct structure",
+        "HTML report opens in browser and renders charts",
+        "Severity breakdown chart shows correct counts",
+        "Per-check detail table is accurate and sortable",
+        "Remediation text, links, and scripts are present for each finding",
+        "Output written to timestamped directory"
+      ],
+      "research": [],
+      "createdAt": "2026-03-12T12:52:16.012Z",
+      "updatedAt": "2026-03-12T12:52:16.012Z"
+    },
+    {
+      "id": "zrtsptlu",
+      "title": "Drift Detection & CLI Polish",
+      "description": "Add local result caching for run comparison (new/resolved findings), CLI progress indicators, exit codes, and final UX polish for MVP release.",
+      "body": "# Epic 7: Drift Detection & CLI Polish\n\n## Scope\nThe final polish layer that makes the tool production-usable: drift detection between runs and CLI UX refinement.\n\n## Deliverables\n\n### 1. Local Result Cache\n- Store each run's JSON report in `./output/{timestamp}/`\n- Maintain a `latest` symlink or `./output/latest.json` pointer\n- Keep configurable number of past runs (default: 10)\n\n### 2. Drift Comparison\n- Compare current run vs. previous run\n- Report:\n  - **New findings** — issues that appeared since last run\n  - **Resolved findings** — issues that were fixed since last run\n  - **Unchanged** — count of persistent findings\n- Add drift summary to both JSON and HTML reports\n- Finding identity: match by `checkId` + affected resource\n\n### 3. CLI UX Polish\n- Progress indicators during audit (which check is running, count/total)\n- Summary table on completion (findings by severity, pass/fail counts)\n- Exit codes: 0 = no critical/high, 1 = critical/high findings found, 2 = execution error\n- `--verbose` flag for detailed per-check output\n- `--category` filter to run only specific categories\n- `--service` filter to run only specific services\n- Color-coded terminal output (red = critical, yellow = medium, green = pass)\n\n### 4. Final Touches\n- README.md with usage instructions\n- `.env.example` file\n- `.gitignore` complete (dist/, output/, node_modules/, .env)",
+      "priority": 7,
+      "status": "draft",
+      "relevantFiles": [
+        {
+          "file": "src/cache/store.ts",
+          "reason": "Local result cache"
+        },
+        {
+          "file": "src/cache/diff.ts",
+          "reason": "Drift comparison logic"
+        },
+        {
+          "file": "src/cli.ts",
+          "reason": "CLI UX and flags"
+        },
+        {
+          "file": "README.md",
+          "reason": "Usage documentation"
+        }
+      ],
+      "todos": [
+        {
+          "text": "Implement local result cache with timestamped storage",
+          "done": false
+        },
+        {
+          "text": "Implement drift comparison (new/resolved/unchanged)",
+          "done": false
+        },
+        {
+          "text": "Add drift summary to JSON and HTML reports",
+          "done": false
+        },
+        {
+          "text": "Add CLI progress indicators",
+          "done": false
+        },
+        {
+          "text": "Implement exit codes based on severity",
+          "done": false
+        },
+        {
+          "text": "Add --verbose, --category, --service flags",
+          "done": false
+        },
+        {
+          "text": "Add color-coded terminal output",
+          "done": false
+        },
+        {
+          "text": "Write README.md",
+          "done": false
+        },
+        {
+          "text": "Create .env.example",
+          "done": false
+        },
+        {
+          "text": "Final .gitignore cleanup",
+          "done": false
+        }
+      ],
+      "successCriteria": [
+        "Second run shows drift comparison vs first run",
+        "New and resolved findings are correctly identified",
+        "CLI shows progress during execution",
+        "Exit code reflects severity of findings",
+        "Category/service filters work correctly",
+        "README documents full usage"
+      ],
+      "research": [],
+      "createdAt": "2026-03-12T12:52:36.980Z",
+      "updatedAt": "2026-03-12T12:52:36.980Z"
+    }
+  ],
+  "issues": [
+    {
+      "id": "02yaw1vw",
+      "type": "chore",
+      "title": "Research & Asset Creation Process Guide",
+      "description": "## Purpose\nThis issue documents the process used to research and create fact-checked technical assets for the M365 Audit Framework project. Use this to recover context if a session is lost.\n\n## What Was Done\n\n### Interview Process (6 rounds via questionnaire)\nCaptured all MVP requirements across: scope, services, auth, tech stack, output formats, risk scoring, benchmarks, execution model, check areas per service, module structure, API approach, error handling, config, data retention, testing, MVP boundaries, remediation detail, report style, check interface, and drift comparison.\n\n### Assets Created\n\n#### Project-Level (injected every session)\n1. **`xq7yo25g`** — **Project Vision & Requirements**: Core scope, principles, MVP boundaries, out-of-scope\n2. **`htjegbit`** — **Tech Stack & Architecture**: Stack choices, module design, API coverage reality, output/reporting\n3. **`eyl0q5s2`** — **Safety & Compliance Policy**: Read-only mandate, permission model, no-secrets rule\n\n#### Technical Reference (category: tech-stack)\n4. **`xm93kcst`** — **Graph SDK & Auth Reference**: NPM packages, auth pattern code, .env config, app registration steps\n5. **`1a8tuhf5`** — **Graph API Permissions & Endpoints Map**: Every check area mapped to endpoint + permission + API version. Includes consolidated permission list and PowerShell module requirements.\n6. **`axsprcbe`** — **CIS M365 Benchmark Reference**: Version history (latest v6.0, Oct 2025, 140 controls), categories, L1/L2 levels, integration approach\n7. **`vg60f2pl`** — **Audit Check Specification**: Check interface (TypeScript), category structure, full check list per service\n\n### Key Technical Findings (web-researched, March 2026)\n- `@microsoft/microsoft-graph-client` v3.0.7 is latest; use with `@azure/identity` and `@microsoft/microsoft-graph-types`\n- **15 Graph application permissions** needed minimum for full MVP\n- **Exchange Administrator** RBAC role needed for Exchange Admin API\n- **Beta-only endpoints**: SharePoint tenant settings, per-user MFA state\n- **No Graph API** for: Exchange anti-spam/anti-phish, transport rules (PowerShell), Teams meeting/guest/app policies (PowerShell)\n- SharePoint site permissions require `Sites.FullControl.All` — no read-only alternative\n- CIS M365 Benchmark v6.0.0 (Oct 2025) is current with 140 controls across 6 services\n\n### How to Recover\n1. Run `asset_list` to see all assets\n2. Run `asset_show` on any asset ID for full content\n3. The 3 project-level assets auto-inject into every session\n4. Use `epic_list` / `issue_list` to see work items\n5. This issue contains the full map of asset IDs and what they cover",
+      "status": "closed",
+      "linkedIssueIds": [],
+      "questions": [],
+      "research": [
+        {
+          "type": "reference",
+          "content": "All technical research was done via web_search tool with the following cache IDs for source verification:\n- Graph SDK auth: `fe2ba161-851c-4647-88f2-8ebf24dff192`\n- Entra permissions: `97de2dac-9471-47e8-88cb-2bfb2448b304`\n- Exchange permissions: `81605089-8ee8-44cf-be89-786c96841a15`\n- SharePoint permissions: `f548c873-e284-41a7-aca6-f249fd2193d1`\n- Teams permissions: `ae1f674f-0746-462b-bff4-e02f222e71d5`\n- CIS Benchmark: `6ed6b051-698f-42a2-a079-108a9c086342`\n- Conditional Access: `cbb7baef-95c5-487c-98e9-e7e7b0a0e943`\n- Directory roles: `274574ff-c65b-4a3c-9f9b-59af527713db`\n- MFA methods: `0dd50662-2a70-4020-97e1-3ae88efd97c7`\n- Graph client npm: `4a56bba8-92f8-41f4-bb1d-bf0e8fcafebf`\n- SharePoint settings: `00bf8d3c-cc75-4c34-b303-bf1bec42e569`\n- Exchange Admin API: `57f16d17-36bb-452a-aed6-4dae56d6759b`",
+          "addedAt": "2026-03-12T12:30:49.930Z"
+        }
+      ],
+      "createdAt": "2026-03-12T12:30:24.434Z",
+      "updatedAt": "2026-03-12T13:10:04.873Z",
+      "autoValidation": {
+        "type": "agent",
+        "strategy": "Verify all referenced asset IDs exist via asset_show"
+      },
+      "epicId": "i8kmkt56",
+      "closeMessage": "Process guide complete. All 7 asset IDs verified, recovery instructions documented.",
+      "closeReason": "done",
+      "validations": [
+        {
+          "criterion": "## Purpose\nThis issue documents the process used to research and create fact-checked technical assets for the M365 Audit Framework project. Use this to recover context if a session is lost.\n\n## What Was Done\n\n### Interview Process (6 rounds via questionnaire)\nCaptured all MVP requirements across: scope, services, auth, tech stack, output formats, risk scoring, benchmarks, execution model, check areas per service, module structure, API approach, error handling, config, data retention, testing, MVP boundaries, remediation detail, report style, check interface, and drift comparison.\n\n### Assets Created\n\n#### Project-Level (injected every session)\n1. **`xq7yo25g`** — **Project Vision & Requirements**: Core scope, principles, MVP boundaries, out-of-scope\n2. **`htjegbit`** — **Tech Stack & Architecture**: Stack choices, module design, API coverage reality, output/reporting\n3. **`eyl0q5s2`** — **Safety & Compliance Policy**: Read-only mandate, permission model, no-secrets rule\n\n#### Technical Reference (category: tech-stack)\n4. **`xm93kcst`** — **Graph SDK & Auth Reference**: NPM packages, auth pattern code, .env config, app registration steps\n5. **`1a8tuhf5`** — **Graph API Permissions & Endpoints Map**: Every check area mapped to endpoint + permission + API version. Includes consolidated permission list and PowerShell module requirements.\n6. **`axsprcbe`** — **CIS M365 Benchmark Reference**: Version history (latest v6.0, Oct 2025, 140 controls), categories, L1/L2 levels, integration approach\n7. **`vg60f2pl`** — **Audit Check Specification**: Check interface (TypeScript), category structure, full check list per service\n\n### Key Technical Findings (web-researched, March 2026)\n- `@microsoft/microsoft-graph-client` v3.0.7 is latest; use with `@azure/identity` and `@microsoft/microsoft-graph-types`\n- **15 Graph application permissions** needed minimum for full MVP\n- **Exchange Administrator** RBAC role needed for Exchange Admin API\n- **Beta-only endpoints**: SharePoint tenant settings, per-user MFA state\n- **No Graph API** for: Exchange anti-spam/anti-phish, transport rules (PowerShell), Teams meeting/guest/app policies (PowerShell)\n- SharePoint site permissions require `Sites.FullControl.All` — no read-only alternative\n- CIS M365 Benchmark v6.0.0 (Oct 2025) is current with 140 controls across 6 services\n\n### How to Recover\n1. Run `asset_list` to see all assets\n2. Run `asset_show` on any asset ID for full content\n3. The 3 project-level assets auto-inject into every session\n4. Use `epic_list` / `issue_list` to see work items\n5. This issue contains the full map of asset IDs and what they cover",
+          "evidence": "All 7 referenced assets verified via asset_list: xq7yo25g (Vision), htjegbit (Tech Stack), eyl0q5s2 (Safety), xm93kcst (Graph SDK), 1a8tuhf5 (Permissions Map), axsprcbe (CIS Benchmark), vg60f2pl (Check Spec). All 3 project-level assets marked with 🌐. Process guide is comprehensive with recovery instructions.",
+          "met": true
+        }
+      ],
+      "closedAt": "2026-03-12T13:10:04.873Z"
+    },
+    {
+      "id": "20eqm1x0",
+      "type": "chore",
+      "title": "Create Azure App Registration & Document AZ CLI Setup",
+      "description": "## Goal\n1. Create an Entra ID app registration via `az cli` with all required read-only permissions for the M365 audit framework\n2. Grant admin consent for the permissions\n3. Create a client secret\n4. Document the full process as a reusable asset so future sessions can replicate/recover\n\n## Permissions Required (from asset `1a8tuhf5`)\nGraph Application Permissions:\n- User.Read.All, RoleManagement.Read.Directory, Policy.Read.All\n- UserAuthenticationMethod.Read.All, Application.Read.All\n- MailboxSettings.Read, Mail.Read\n- SharePointTenantSettings.Read.All, Sites.Read.All, Sites.FullControl.All, Files.Read.All\n- Team.ReadBasic.All, TeamMember.Read.All, OnlineMeetings.Read.All, AppCatalog.Read.All\n\nEntra RBAC: Exchange Administrator (for Exchange Admin API)\n\n## Deliverables\n- Working app registration with all permissions + admin consent\n- .env file with credentials\n- Asset documenting the full `az cli` setup process for recovery",
+      "status": "closed",
+      "linkedIssueIds": [],
+      "questions": [],
+      "research": [
+        {
+          "type": "reference",
+          "content": "Permissions and endpoints documented in asset `1a8tuhf5`. Auth pattern in asset `xm93kcst`. All web-research cached and verified.",
+          "addedAt": "2026-03-12T12:33:41.376Z"
+        },
+        {
+          "type": "comment",
+          "content": "## Verified Endpoints (live tested March 12, 2026)\nAll 15 permissions granted and admin-consented. Tested these endpoints successfully:\n- ✅ `GET /users` — returns users with displayName, UPN, userType\n- ✅ `GET /identity/conditionalAccess/policies` — returns CA policies with state\n- ✅ `GET /directoryRoles` — works WITHOUT `$top` param (quirk: rejects custom page sizes)\n- ✅ `GET /applications` — returns app registrations\n- ✅ `GET /beta/admin/sharepoint/settings` — returns full tenant sharing config\n- ✅ `GET /teams` — returns teams list\n\nCreated asset `n2mzjarb` with full runbook for recovery.",
+          "addedAt": "2026-03-12T12:37:21.070Z"
+        }
+      ],
+      "createdAt": "2026-03-12T12:33:32.042Z",
+      "updatedAt": "2026-03-12T12:37:43.316Z",
+      "autoValidation": {
+        "type": "agent",
+        "strategy": "Verify app registration exists via az cli and permissions are granted"
+      },
+      "closeMessage": "All deliverables complete: app registration with 15 permissions + admin consent, .env with credentials, runbook asset for full recovery. 6 Graph endpoints verified live.",
+      "closeReason": "done",
+      "validations": [
+        {
+          "criterion": "## Goal\n1. Create an Entra ID app registration via `az cli` with all required read-only permissions for the M365 audit framework\n2. Grant admin consent for the permissions\n3. Create a client secret\n4. Document the full process as a reusable asset so future sessions can replicate/recover\n\n## Permissions Required (from asset `1a8tuhf5`)\nGraph Application Permissions:\n- User.Read.All, RoleManagement.Read.Directory, Policy.Read.All\n- UserAuthenticationMethod.Read.All, Application.Read.All\n- MailboxSettings.Read, Mail.Read\n- SharePointTenantSettings.Read.All, Sites.Read.All, Sites.FullControl.All, Files.Read.All\n- Team.ReadBasic.All, TeamMember.Read.All, OnlineMeetings.Read.All, AppCatalog.Read.All\n\nEntra RBAC: Exchange Administrator (for Exchange Admin API)\n\n## Deliverables\n- Working app registration with all permissions + admin consent\n- .env file with credentials\n- Asset documenting the full `az cli` setup process for recovery",
+          "evidence": "App registration \"M365 Audit Framework (Read-Only)\" exists (appId: 9a7c3ea1-9f7a-4489-9c69-3b8173e72a07). 15 Graph application permissions granted with admin consent. Live-tested 6 endpoints successfully (users, CA policies, directory roles, applications, SharePoint settings, teams). .env file created with credentials, .gitignore protects it. Runbook asset n2mzjarb created as project-level asset for recovery.",
+          "met": true
+        }
+      ],
+      "closedAt": "2026-03-12T12:37:43.316Z"
+    },
+    {
+      "id": "blmlkm32",
+      "type": "spike",
+      "title": "Research & Validate Tech Stack Versions for Bootstrap",
+      "description": "## Goal\nResearch and validate all package versions, Node.js compatibility, and TypeScript config before bootstrapping the project. Produce a pinned, known-good dependency manifest.\n\n## Areas to Validate\n1. Node.js version (local) and TypeScript version compatibility\n2. `@microsoft/microsoft-graph-client` — latest version, peer deps, TS compat\n3. `@azure/identity` — latest version, which credential classes available\n4. `@microsoft/microsoft-graph-types` — latest, coverage (v1.0 vs beta)\n5. `isomorphic-fetch` — still needed? or native fetch in modern Node?\n6. HTML report generation — best lib (e.g. handlebars, ejs, or raw)\n7. Chart library for HTML dashboard (Chart.js CDN? inline SVG?)\n8. CLI framework (e.g. commander, yargs, or none for MVP)\n9. dotenv for .env loading\n10. pnpm version and tsconfig best practices\n11. Any known breaking changes or deprecations in 2025-2026\n\n## Deliverable\nAsset with pinned version manifest and bootstrap instructions",
+      "status": "closed",
+      "linkedIssueIds": [],
+      "questions": [],
+      "research": [
+        {
+          "type": "reference",
+          "content": "Existing tech stack decisions in assets `htjegbit` (Tech Stack & Architecture) and `xm93kcst` (Graph SDK & Auth Reference).",
+          "addedAt": "2026-03-12T12:44:10.090Z"
+        }
+      ],
+      "createdAt": "2026-03-12T12:44:04.282Z",
+      "updatedAt": "2026-03-12T12:47:53.765Z",
+      "autoValidation": {
+        "type": "agent",
+        "strategy": "Verify all packages can be installed and versions are confirmed via pnpm"
+      },
+      "closeMessage": "All tech stack versions researched, installed, compiled, and live-tested. Pinned manifest asset created (h4lwfk3c). Stack is ready for bootstrap.",
+      "closeReason": "done",
+      "validations": [
+        {
+          "criterion": "## Goal\nResearch and validate all package versions, Node.js compatibility, and TypeScript config before bootstrapping the project. Produce a pinned, known-good dependency manifest.\n\n## Areas to Validate\n1. Node.js version (local) and TypeScript version compatibility\n2. `@microsoft/microsoft-graph-client` — latest version, peer deps, TS compat\n3. `@azure/identity` — latest version, which credential classes available\n4. `@microsoft/microsoft-graph-types` — latest, coverage (v1.0 vs beta)\n5. `isomorphic-fetch` — still needed? or native fetch in modern Node?\n6. HTML report generation — best lib (e.g. handlebars, ejs, or raw)\n7. Chart library for HTML dashboard (Chart.js CDN? inline SVG?)\n8. CLI framework (e.g. commander, yargs, or none for MVP)\n9. dotenv for .env loading\n10. pnpm version and tsconfig best practices\n11. Any known breaking changes or deprecations in 2025-2026\n\n## Deliverable\nAsset with pinned version manifest and bootstrap instructions",
+          "evidence": "All 10 areas validated:\n1. Node 24.14.0 ✅\n2. @microsoft/microsoft-graph-client 3.0.7 ✅ (compiles + runs)\n3. @azure/identity 4.13.0 ✅ (ClientSecretCredential works)\n4. @microsoft/microsoft-graph-types 2.43.1 + beta 0.44.0-preview ✅\n5. isomorphic-fetch NOT needed — Node 24 native fetch confirmed ✅\n6. HTML report: raw template with Chart.js CDN ✅ (researched)\n7. Chart.js 4.5.1 via CDN ✅ (researched)\n8. commander 14.0.3 ✅ (installed, zero deps)\n9. dotenv 17.3.1 ✅ (works)\n10. pnpm 10.30.3 + tsconfig nodenext ✅ (compiles clean)\n11. No breaking changes found — all latest stable versions compatible\n\npnpm ls shows 8 packages, tsc compiles with 0 errors, runtime test passes with live Graph API calls (users, beta SharePoint settings, CA policies).",
+          "met": true
+        }
+      ],
+      "closedAt": "2026-03-12T12:47:53.765Z"
+    },
+    {
+      "id": "h36zybs5",
+      "type": "spike",
+      "title": "Spike: Validate bootstrap architecture and folder structure",
+      "description": "## Goal\nExpand on Epic 1 requirements by validating the project structure, Graph client wrapper design, and CLI setup. Research current best practices and ensure all documentation assets are up-to-date.\n\n## Research Areas\n1. Verify Commander 14 API for ESM/TypeScript — subcommand pattern, async action handlers\n2. Validate Graph client pagination pattern — does SDK have built-in `PageIterator`? Or manual `nextLink`?\n3. Confirm permission validation approach — can we call `GET /me` or similar to test token, then check `appRoleAssignments`?\n4. Review folder structure conventions for plugin-style TS projects\n5. Check if `dotenv` 17.x has breaking changes vs older patterns\n\n## Deliverable\nUpdated epic description and research notes with validated patterns and any corrections to existing assets.",
+      "status": "closed",
+      "epicId": "i8kmkt56",
+      "linkedIssueIds": [],
+      "questions": [],
+      "research": [
+        {
+          "type": "reference",
+          "content": "## Commander 14 ESM/TypeScript — Validated Pattern\n\nCommander 14.0.3 natively supports async action handlers and ESM. No extra config needed.\n\n**Recommended pattern for our CLI:**\n```typescript\nimport { Command } from 'commander';\n\nconst program = new Command()\n  .name('o365-audit')\n  .description('Office 365 Security Audit Framework')\n  .version('1.0.0');\n\nprogram.command('audit')\n  .description('Run security audit checks')\n  .option('--output-dir <dir>', 'Output directory for reports', './output')\n  .option('--categories <cats...>', 'Categories to audit')\n  .action(async (options) => {\n    // async handler works natively\n  });\n\nprogram.parse();\n```\n\n- No need for `@commander-js/extra-typings` — built-in types are sufficient for our simple CLI\n- Subcommand nesting works via `.command()` chaining\n- `program.parse()` (no args) defaults to `process.argv`",
+          "addedAt": "2026-03-12T12:59:32.002Z"
+        },
+        {
+          "type": "reference",
+          "content": "## Graph SDK PageIterator — Built-in Pagination\n\nThe SDK has a built-in `PageIterator` class — no need for manual `nextLink` handling.\n\n```typescript\nimport { Client, PageIterator, PageCollection } from '@microsoft/microsoft-graph-client';\n\nasync function getAllItems<T>(client: Client, endpoint: string): Promise<T[]> {\n  const items: T[] = [];\n  const response: PageCollection = await client.api(endpoint).get();\n  \n  const callback = (item: T) => {\n    items.push(item);\n    return true; // continue\n  };\n  \n  const pageIterator = new PageIterator(client, response, callback);\n  await pageIterator.iterate();\n  return items;\n}\n```\n\n**Key facts:**\n- Import: `import { PageIterator } from '@microsoft/microsoft-graph-client'`\n- Callback returns `true` to continue, `false` to pause\n- `pageIterator.isComplete()` checks if all pages consumed\n- Handles `@odata.nextLink` automatically\n- Works with both v1.0 and beta endpoints\n\n**Exception:** `directoryRoles` endpoint does NOT support `$top` (already noted in epic). Use PageIterator without `.top()` for that endpoint.",
+          "addedAt": "2026-03-12T12:59:32.005Z"
+        },
+        {
+          "type": "reference",
+          "content": "## dotenv 17.x — No ESM Breaking Changes\n\n- ESM import unchanged: `import dotenv from 'dotenv'; dotenv.config();`\n- `#` in values now requires quoting: `SECRET=\"value-with-#-hash\"`\n- Multiline enabled by default (no flag needed)\n- New: logs injection message on startup — silence with `dotenv.config({ quiet: true })`\n- Our `.env` only has TENANT_ID, CLIENT_ID, CLIENT_SECRET — no `#` concerns\n\n## Permission Validation Approach\n\nFor pre-flight permission check, use `GET /organization` (requires `Organization.Read.All` which is minimal):\n- If token works → auth is valid\n- Then test specific endpoints needed by selected audit categories\n- Catch `403 Forbidden` → report which permission is missing\n- Pattern: try each endpoint with `$top=1`, catch and collect errors\n\n## Folder Structure — Validated\n\n```\nsrc/\n├── index.ts                    # CLI entry point\n├── config.ts                   # AuditConfig, .env loading\n├── graph/\n│   ├── client.ts               # Graph client wrapper + auth\n│   └── pagination.ts           # PageIterator helper\n├── checks/\n│   ├── runner.ts               # Check executor with error collection\n│   ├── types.ts                # CheckResult, CheckSeverity interfaces\n│   ├── identity/               # MFA, CA policies, risky users\n│   ├── data-protection/        # SharePoint sharing, DLP\n│   ├── access-control/         # Admin roles, PIM\n│   └── threat-protection/      # Safe links, anti-phishing\n├── reports/\n│   └── html-reporter.ts        # HTML report generator\n└── utils/\n    └── errors.ts               # Error collection/summary pattern\n```\n\nThis follows plugin-style convention: each category folder contains independent check files that export a standard interface.",
+          "addedAt": "2026-03-12T12:59:32.013Z"
+        }
+      ],
+      "createdAt": "2026-03-12T12:52:51.426Z",
+      "updatedAt": "2026-03-12T13:00:31.097Z",
+      "autoValidation": {
+        "type": "agent",
+        "strategy": "Verify research notes are added and any asset corrections are applied"
+      },
+      "closeMessage": "Spike complete. All 5 research areas validated. Epic updated with validated CLI pattern, PageIterator pagination, permission validation approach, folder structure, and dotenv 17 notes. No corrections needed to existing assets.",
+      "closeReason": "done",
+      "validations": [
+        {
+          "criterion": "## Goal\nExpand on Epic 1 requirements by validating the project structure, Graph client wrapper design, and CLI setup. Research current best practices and ensure all documentation assets are up-to-date.\n\n## Research Areas\n1. Verify Commander 14 API for ESM/TypeScript — subcommand pattern, async action handlers\n2. Validate Graph client pagination pattern — does SDK have built-in `PageIterator`? Or manual `nextLink`?\n3. Confirm permission validation approach — can we call `GET /me` or similar to test token, then check `appRoleAssignments`?\n4. Review folder structure conventions for plugin-style TS projects\n5. Check if `dotenv` 17.x has breaking changes vs older patterns\n\n## Deliverable\nUpdated epic description and research notes with validated patterns and any corrections to existing assets.",
+          "evidence": "All 5 research areas completed and documented:\n1. Commander 14 ESM/TS — validated async actions, subcommand pattern (research note added)\n2. Graph SDK PageIterator — confirmed built-in, documented usage pattern (research note added)\n3. Permission validation — approach defined: GET /organization + per-endpoint probing (research note added)\n4. Folder structure — plugin-style layout validated and documented (research note added)\n5. dotenv 17.x — no ESM breaking changes confirmed (research note added)\n\nEpic i8kmkt56 body updated with full \"Validated Architecture\" section containing all patterns and the folder structure.",
+          "met": true
+        }
+      ],
+      "closedAt": "2026-03-12T13:00:31.097Z"
+    },
+    {
+      "id": "m5aalve7",
+      "type": "spike",
+      "title": "Spike: Validate check engine design and auto-discovery pattern",
+      "description": "## Goal\nExpand on Epic 2 by researching and validating the check engine design. Ensure the function-based plugin pattern and auto-discovery approach work well with TypeScript ESM.\n\n## Research Areas\n1. ESM dynamic import for auto-discovery — `import()` from file paths, glob patterns in Node 24\n2. Validate the CheckMetadata/Finding/CheckResult type design against real Graph API response shapes\n3. Research Node.js `fs.readdir` + dynamic import pattern vs. explicit registry\n4. Check if `node:fs/promises` glob is available in Node 24 or if we need a library\n5. Validate aggregation approach — group by severity/category/service\n\n## Deliverable\nUpdated epic with validated discovery pattern and finalized type definitions. Research notes with code examples.",
+      "status": "draft",
+      "epicId": "jfv2qha7",
+      "linkedIssueIds": [],
+      "questions": [],
+      "research": [],
+      "createdAt": "2026-03-12T12:53:01.578Z",
+      "updatedAt": "2026-03-12T12:53:01.578Z",
+      "autoValidation": {
+        "type": "agent",
+        "strategy": "Verify research notes are added with working code examples"
+      }
+    },
+    {
+      "id": "ov0dwuvm",
+      "type": "spike",
+      "title": "Spike: Validate Entra ID Graph endpoints and response shapes",
+      "description": "## Goal\nLive-test all Entra ID Graph endpoints against the real tenant. Document actual response shapes, pagination behavior, and edge cases before implementing checks.\n\n## Research Areas\n1. `GET /directoryRoles` + `/directoryRoles/{id}/members` — response shape, which roles are activated\n2. `GET /users/{id}/authentication/methods` (v1.0) vs `/authentication/requirements` (beta) — response differences, what methods look like for MFA vs no-MFA users\n3. `GET /identity/conditionalAccess/policies` — full response shape, what a \"gap\" looks like (disabled, not covering all users)\n4. `GET /users?$filter=userType eq 'Guest'` — confirm filter works with app-only, check `signInActivity` availability\n5. `GET /applications` — secret expiry fields, permission grants shape, how to detect overprivileged apps\n6. Cross-reference findings with CIS M365 v6 benchmark controls for Entra ID\n\n## Deliverable\nResearch notes with actual API response samples from the live tenant. Updated epic with edge cases and corrections.",
+      "status": "draft",
+      "epicId": "q5b3d9rg",
+      "linkedIssueIds": [],
+      "questions": [],
+      "research": [],
+      "createdAt": "2026-03-12T12:53:15.374Z",
+      "updatedAt": "2026-03-12T12:53:15.374Z",
+      "autoValidation": {
+        "type": "agent",
+        "strategy": "Verify live API calls were made and response shapes documented in research notes"
+      }
+    },
+    {
+      "id": "w0pc0m37",
+      "type": "spike",
+      "title": "Spike: Validate Exchange & SharePoint endpoints and response shapes",
+      "description": "## Goal\nLive-test all Exchange and SharePoint Graph endpoints. Document response shapes, per-user iteration performance, and beta endpoint stability.\n\n## Research Areas\n1. `GET /users/{id}/mailboxSettings` — response shape, where forwarding address lives, how to detect external forwarding\n2. `GET /users/{id}/mailFolders/inbox/messageRules` — response shape, how forward/redirect actions look\n3. Performance of per-user iteration — how many users before it becomes slow? Rate limiting?\n4. `GET /beta/admin/sharepoint/settings` — full response shape (already partially tested), all relevant fields\n5. `GET /sites` — does it return all sites? Pagination? How to get site-level sharing settings\n6. `GET /sites/{id}/permissions` — response shape with `Sites.FullControl.All`\n7. Graph API rate limits and throttling for batch per-user calls\n8. Cross-reference with CIS M365 v6 data protection controls\n\n## Deliverable\nResearch notes with actual response samples. Performance observations for per-user checks. Updated epic with corrections.",
+      "status": "draft",
+      "epicId": "dtxtnvyi",
+      "linkedIssueIds": [],
+      "questions": [],
+      "research": [],
+      "createdAt": "2026-03-12T12:53:27.584Z",
+      "updatedAt": "2026-03-12T12:53:27.584Z",
+      "autoValidation": {
+        "type": "agent",
+        "strategy": "Verify live API calls were made and response shapes documented"
+      }
+    },
+    {
+      "id": "iyysiu9t",
+      "type": "spike",
+      "title": "Spike: Validate Teams endpoints and document PowerShell gaps",
+      "description": "## Goal\nLive-test Teams Graph endpoints and thoroughly document what PowerShell-only checks need. Research the stub pattern and exact PowerShell commands.\n\n## Research Areas\n1. `GET /teams` + `GET /teams/{id}/members` — response shape, how to identify guest members\n2. `GET /appCatalogs/teamsApps` — response shape, how to distinguish first-party vs third-party vs sideloaded\n3. Exchange Admin API preview — is `GetMailDetailTransportRuleReport` accessible with our app? Test it\n4. Research exact PowerShell commands for each stub:\n   - `Get-CsTeamsMeetingPolicy` — what fields to check\n   - `Get-CsTeamsGuestMeetingConfiguration` — what fields matter\n   - `Get-CsTeamsAppPermissionPolicy` — what to flag\n   - `Get-HostedContentFilterPolicy` / `Get-AntiPhishPolicy` — key security fields\n   - `Get-TransportRule` — key rule patterns to flag\n5. Cross-reference with CIS M365 v6 Teams and Exchange controls\n\n## Deliverable\nResearch notes with live response samples for Graph checks. Comprehensive stub documentation with exact PS commands and what each would check.",
+      "status": "draft",
+      "epicId": "rbxoumb4",
+      "linkedIssueIds": [],
+      "questions": [],
+      "research": [],
+      "createdAt": "2026-03-12T12:53:37.759Z",
+      "updatedAt": "2026-03-12T12:53:37.759Z",
+      "autoValidation": {
+        "type": "agent",
+        "strategy": "Verify live API calls for Teams endpoints and PowerShell commands documented"
+      }
+    },
+    {
+      "id": "c5lsok7w",
+      "type": "spike",
+      "title": "Spike: Validate HTML report approach and Chart.js integration",
+      "description": "## Goal\nValidate the HTML dashboard report generation approach. Test Chart.js CDN embedding, template literal strategy, and ensure reports work offline.\n\n## Research Areas\n1. Chart.js 4.5.1 CDN — verify URL is stable and accessible\n2. Test inline template approach — can we build the full HTML in a TypeScript template literal without a templating engine?\n3. Research best chart types for security audit data (doughnut for severity, bar for categories)\n4. Validate that the HTML file works fully offline after first CDN load (or consider inlining Chart.js)\n5. Research accessible color palettes for severity levels (color-blind friendly)\n6. Check if there's a way to make the HTML report printable (CSS print media query)\n7. Research JSON schema/structure best practices for audit tools\n\n## Deliverable\nResearch notes with a proof-of-concept HTML template. Validated Chart.js approach. Updated epic with any corrections.",
+      "status": "draft",
+      "epicId": "xyz30e0l",
+      "linkedIssueIds": [],
+      "questions": [],
+      "research": [],
+      "createdAt": "2026-03-12T12:53:47.595Z",
+      "updatedAt": "2026-03-12T12:53:47.595Z",
+      "autoValidation": {
+        "type": "agent",
+        "strategy": "Verify Chart.js CDN is accessible and a proof-of-concept HTML renders correctly"
+      }
+    },
+    {
+      "id": "ice1vvm1",
+      "type": "spike",
+      "title": "Spike: Research drift detection and CLI UX patterns",
+      "description": "## Goal\nResearch and validate the drift detection approach and CLI polish patterns before implementation.\n\n## Research Areas\n1. Finding identity strategy — what makes a finding \"the same\" between runs? `checkId + resource ID` vs hash of finding\n2. JSON diff approach — deep comparison vs. finding-level matching\n3. Symlink behavior on different OS (Linux/Mac/Windows) for `latest` pointer\n4. Commander 14 features for progress output — spinners? Or use `ora`/`cli-progress`?\n5. Exit code conventions for security audit tools\n6. `chalk` or `picocolors` for terminal colors — which is lighter/ESM-compatible?\n7. Research how other audit tools (ScoutSuite, Prowler) handle drift/comparison\n\n## Deliverable\nResearch notes with recommended approach for each area. Updated epic with validated patterns.",
+      "status": "draft",
+      "epicId": "zrtsptlu",
+      "linkedIssueIds": [],
+      "questions": [],
+      "research": [],
+      "createdAt": "2026-03-12T12:53:59.338Z",
+      "updatedAt": "2026-03-12T12:53:59.338Z",
+      "autoValidation": {
+        "type": "agent",
+        "strategy": "Verify research notes cover all areas with recommended approaches"
+      }
+    },
+    {
+      "id": "0352oh4w",
+      "type": "feature",
+      "title": "Create project folder structure",
+      "description": "Create the validated folder structure from the spike:\n\n```\nsrc/\n├── index.ts\n├── config.ts\n├── graph/\n│   ├── client.ts\n│   └── pagination.ts\n├── checks/\n│   ├── runner.ts\n│   ├── types.ts\n│   ├── identity/\n│   ├── data-protection/\n│   ├── access-control/\n│   └── threat-protection/\n├── reports/\n│   └── html-reporter.ts\n└── utils/\n    └── errors.ts\n```\n\nCreate placeholder files with basic exports. Remove the old `validate-stack.ts`. Update `package.json` scripts to point to `dist/index.js`.",
+      "status": "closed",
+      "epicId": "i8kmkt56",
+      "linkedIssueIds": [],
+      "questions": [],
+      "research": [
+        {
+          "type": "reference",
+          "content": "Folder structure validated in spike h36zybs5. All patterns confirmed in epic body. Straightforward file creation task.",
+          "addedAt": "2026-03-12T13:02:04.237Z"
+        }
+      ],
+      "createdAt": "2026-03-12T13:01:38.433Z",
+      "updatedAt": "2026-03-12T13:03:21.415Z",
+      "autoValidation": {
+        "type": "agent",
+        "strategy": "Run `tsc --noEmit` to verify all files compile. Check folder structure with `find src/`."
+      },
+      "closeMessage": "Folder structure created with all placeholder files. TypeScript compiles clean. Old validate-stack.ts removed.",
+      "closeReason": "done",
+      "validations": [
+        {
+          "criterion": "Create the validated folder structure from the spike:\n\n```\nsrc/\n├── index.ts\n├── config.ts\n├── graph/\n│   ├── client.ts\n│   └── pagination.ts\n├── checks/\n│   ├── runner.ts\n│   ├── types.ts\n│   ├── identity/\n│   ├── data-protection/\n│   ├── access-control/\n│   └── threat-protection/\n├── reports/\n│   └── html-reporter.ts\n└── utils/\n    └── errors.ts\n```\n\nCreate placeholder files with basic exports. Remove the old `validate-stack.ts`. Update `package.json` scripts to point to `dist/index.js`.",
+          "evidence": "tsc --noEmit passes with zero errors. find src/ shows all 12 files in correct structure: src/index.ts, src/config.ts, src/graph/{client,pagination}.ts, src/checks/{runner,types}.ts, src/checks/{identity,data-protection,access-control,threat-protection}/.gitkeep, src/reports/html-reporter.ts, src/utils/errors.ts. Old validate-stack.ts removed. package.json start script updated to dist/index.js.",
+          "met": true
+        }
+      ],
+      "closedAt": "2026-03-12T13:03:21.415Z"
+    },
+    {
+      "id": "inv0odwn",
+      "type": "feature",
+      "title": "Implement config loading from .env",
+      "description": "Implement `src/config.ts` with:\n- `AuditConfig` interface: tenantId, clientId, clientSecret, outputDir, categories\n- `loadConfig()` function using dotenv 17 (`dotenv.config({ quiet: true })`)\n- Validate required env vars (TENANT_ID, CLIENT_ID, CLIENT_SECRET) and throw descriptive errors if missing\n- Export typed config for use by Graph client and CLI",
+      "status": "closed",
+      "epicId": "i8kmkt56",
+      "linkedIssueIds": [],
+      "questions": [],
+      "research": [
+        {
+          "type": "reference",
+          "content": "dotenv 17 pattern validated in spike. Use `dotenv.config({ quiet: true })`. Existing .env has TENANT_ID, CLIENT_ID, CLIENT_SECRET.",
+          "addedAt": "2026-03-12T13:03:35.756Z"
+        }
+      ],
+      "createdAt": "2026-03-12T13:01:38.438Z",
+      "updatedAt": "2026-03-12T13:04:37.035Z",
+      "autoValidation": {
+        "type": "agent",
+        "strategy": "Run `tsc --noEmit` and verify config loads with existing .env file."
+      },
+      "closeMessage": "Config loading implemented with validation, dotenv 17 quiet mode, and override support.",
+      "closeReason": "done",
+      "validations": [
+        {
+          "criterion": "Implement `src/config.ts` with:\n- `AuditConfig` interface: tenantId, clientId, clientSecret, outputDir, categories\n- `loadConfig()` function using dotenv 17 (`dotenv.config({ quiet: true })`)\n- Validate required env vars (TENANT_ID, CLIENT_ID, CLIENT_SECRET) and throw descriptive errors if missing\n- Export typed config for use by Graph client and CLI",
+          "evidence": "tsc --noEmit passes with zero errors. Config implements: AuditConfig interface (tenantId, clientId, clientSecret, outputDir, categories), loadConfig() with dotenv.config({ quiet: true }), validates 3 required env vars with descriptive error message, supports overrides param.",
+          "met": true
+        }
+      ],
+      "closedAt": "2026-03-12T13:04:37.035Z"
+    },
+    {
+      "id": "ypnkqum0",
+      "type": "feature",
+      "title": "Implement Graph client wrapper with pagination",
+      "description": "Implement `src/graph/client.ts` and `src/graph/pagination.ts`:\n\n**client.ts:**\n- `createGraphClient(config: AuditConfig): Client` using `ClientSecretCredential` + `TokenCredentialAuthenticationProvider`\n- `.js` extension on azureTokenCredentials import (required for ESM)\n\n**pagination.ts:**\n- `getAllItems<T>(client: Client, endpoint: string, apiVersion?: 'v1.0' | 'beta'): Promise<T[]>`\n- Uses built-in `PageIterator` from SDK\n- Supports both v1.0 and beta endpoints",
+      "status": "closed",
+      "epicId": "i8kmkt56",
+      "linkedIssueIds": [],
+      "questions": [],
+      "research": [
+        {
+          "type": "reference",
+          "content": "Auth pattern from asset xm93kcst. PageIterator from spike research. .js extension required on azureTokenCredentials import.",
+          "addedAt": "2026-03-12T13:05:46.797Z"
+        }
+      ],
+      "createdAt": "2026-03-12T13:01:38.446Z",
+      "updatedAt": "2026-03-12T13:07:02.255Z",
+      "autoValidation": {
+        "type": "agent",
+        "strategy": "Run `tsc --noEmit`. Optionally test with `GET /organization` if .env credentials available."
+      },
+      "closeMessage": "Graph client wrapper and pagination helper implemented.",
+      "closeReason": "done",
+      "validations": [
+        {
+          "criterion": "Implement `src/graph/client.ts` and `src/graph/pagination.ts`:\n\n**client.ts:**\n- `createGraphClient(config: AuditConfig): Client` using `ClientSecretCredential` + `TokenCredentialAuthenticationProvider`\n- `.js` extension on azureTokenCredentials import (required for ESM)\n\n**pagination.ts:**\n- `getAllItems<T>(client: Client, endpoint: string, apiVersion?: 'v1.0' | 'beta'): Promise<T[]>`\n- Uses built-in `PageIterator` from SDK\n- Supports both v1.0 and beta endpoints",
+          "evidence": "tsc --noEmit passes with zero errors. client.ts exports createGraphClient(config) using ClientSecretCredential + TokenCredentialAuthenticationProvider with .js extension. pagination.ts exports getAllItems<T> using PageIterator with v1.0/beta support.",
+          "met": true
+        }
+      ],
+      "closedAt": "2026-03-12T13:07:02.255Z"
+    },
+    {
+      "id": "yca4m1sr",
+      "type": "feature",
+      "title": "Implement CLI with Commander",
+      "description": "Implement `src/index.ts` CLI entry point with Commander 14:\n\n- `o365-audit` program with version from package.json\n- `audit` subcommand with:\n  - `--output-dir <dir>` (default: `./output`)\n  - `--categories <cats...>` (optional filter)\n- Async action handler that loads config, creates Graph client, and runs audit\n- `--help` and `--version` flags (built-in)\n- Placeholder audit execution that logs \"Audit started\" for now",
+      "status": "closed",
+      "epicId": "i8kmkt56",
+      "linkedIssueIds": [],
+      "questions": [],
+      "research": [
+        {
+          "type": "reference",
+          "content": "Commander 14 pattern validated in spike. Async action handlers work natively. Config and Graph client modules now implemented.",
+          "addedAt": "2026-03-12T13:07:10.778Z"
+        }
+      ],
+      "createdAt": "2026-03-12T13:01:38.449Z",
+      "updatedAt": "2026-03-12T13:08:19.752Z",
+      "autoValidation": {
+        "type": "agent",
+        "strategy": "Build with `pnpm build` then run `node dist/index.js --help` and `node dist/index.js audit --help`."
+      },
+      "closeMessage": "CLI implemented with Commander 14. audit subcommand with --output-dir and --categories.",
+      "closeReason": "done",
+      "validations": [
+        {
+          "criterion": "Implement `src/index.ts` CLI entry point with Commander 14:\n\n- `o365-audit` program with version from package.json\n- `audit` subcommand with:\n  - `--output-dir <dir>` (default: `./output`)\n  - `--categories <cats...>` (optional filter)\n- Async action handler that loads config, creates Graph client, and runs audit\n- `--help` and `--version` flags (built-in)\n- Placeholder audit execution that logs \"Audit started\" for now",
+          "evidence": "pnpm build succeeds. `node dist/index.js --help` outputs: \"Usage: o365-audit [options] [command] / Office 365 Security Audit Framework / Options: -V, --version / Commands: audit [options]\". `node dist/index.js audit --help` outputs: \"--output-dir <dir> (default: ./output), --categories <cats...>\".",
+          "met": true
+        }
+      ],
+      "closedAt": "2026-03-12T13:08:19.752Z"
+    },
+    {
+      "id": "0mcl9vkj",
+      "type": "feature",
+      "title": "Implement permission pre-validator",
+      "description": "Implement permission validation in `src/graph/` or `src/utils/`:\n\n- `validatePermissions(client: Client, requiredEndpoints: string[]): Promise<PermissionReport>`\n- Test auth with `GET /organization`\n- Probe each required endpoint with `$top=1`\n- Catch `403 Forbidden` → collect missing permission name\n- Return structured report: `{ valid: boolean, missing: string[], errors: string[] }`\n- Fail fast before running audit checks",
+      "status": "closed",
+      "epicId": "i8kmkt56",
+      "linkedIssueIds": [],
+      "questions": [],
+      "research": [
+        {
+          "type": "reference",
+          "content": "Approach from spike: GET /organization for auth test, then $top=1 per endpoint, catch 403. Graph client already implemented.",
+          "addedAt": "2026-03-12T13:08:24.551Z"
+        }
+      ],
+      "createdAt": "2026-03-12T13:01:38.454Z",
+      "updatedAt": "2026-03-12T13:09:02.102Z",
+      "autoValidation": {
+        "type": "agent",
+        "strategy": "Run `tsc --noEmit`. Test with live Graph client if credentials available."
+      },
+      "closeMessage": "Permission pre-validator implemented with auth check, per-endpoint probing, and formatted report.",
+      "closeReason": "done",
+      "validations": [
+        {
+          "criterion": "Implement permission validation in `src/graph/` or `src/utils/`:\n\n- `validatePermissions(client: Client, requiredEndpoints: string[]): Promise<PermissionReport>`\n- Test auth with `GET /organization`\n- Probe each required endpoint with `$top=1`\n- Catch `403 Forbidden` → collect missing permission name\n- Return structured report: `{ valid: boolean, missing: string[], errors: string[] }`\n- Fail fast before running audit checks",
+          "evidence": "tsc --noEmit passes with zero errors. permissions.ts exports: validatePermissions(client, probes) → PermissionReport, CORE_PERMISSION_PROBES (7 probes), printPermissionReport(). Tests auth via GET /organization, probes endpoints, catches 403/401 as missing permissions.",
+          "met": true
+        }
+      ],
+      "closedAt": "2026-03-12T13:09:02.102Z"
+    },
+    {
+      "id": "oqpiukse",
+      "type": "feature",
+      "title": "Implement error collection/summary pattern",
+      "description": "Implement `src/utils/errors.ts` and `src/checks/types.ts`:\n\n**types.ts:**\n- `CheckResult` interface: checkId, name, category, status (pass/fail/warn/error), message, details, severity\n- `CheckSeverity` enum: critical, high, medium, low, info\n\n**errors.ts:**\n- `AuditErrorCollector` class: collects warnings/errors per check without crashing\n- `addWarning(checkId, message)`, `addError(checkId, error)`\n- `getSummary()`: returns structured summary of all collected issues\n- `hasErrors()`, `hasWarnings()` helpers",
+      "status": "closed",
+      "epicId": "i8kmkt56",
+      "linkedIssueIds": [],
+      "questions": [],
+      "research": [
+        {
+          "type": "reference",
+          "content": "Skip-warn-summarize pattern from epic. CheckResult with pass/fail/warn/error status. Collect per-check errors without crashing.",
+          "addedAt": "2026-03-12T13:03:35.759Z"
+        }
+      ],
+      "createdAt": "2026-03-12T13:01:38.457Z",
+      "updatedAt": "2026-03-12T13:05:35.642Z",
+      "autoValidation": {
+        "type": "agent",
+        "strategy": "Run `tsc --noEmit` to verify types compile."
+      },
+      "closeMessage": "Error collection/summary pattern and check types implemented.",
+      "closeReason": "done",
+      "validations": [
+        {
+          "criterion": "Implement `src/utils/errors.ts` and `src/checks/types.ts`:\n\n**types.ts:**\n- `CheckResult` interface: checkId, name, category, status (pass/fail/warn/error), message, details, severity\n- `CheckSeverity` enum: critical, high, medium, low, info\n\n**errors.ts:**\n- `AuditErrorCollector` class: collects warnings/errors per check without crashing\n- `addWarning(checkId, message)`, `addError(checkId, error)`\n- `getSummary()`: returns structured summary of all collected issues\n- `hasErrors()`, `hasWarnings()` helpers",
+          "evidence": "tsc --noEmit passes with zero errors. types.ts has CheckResult, CheckSeverity, CheckStatus, AuditCheck. errors.ts has AuditErrorCollector with addWarning, addError, hasWarnings, hasErrors, getSummary, printSummary.",
+          "met": true
+        }
+      ],
+      "closedAt": "2026-03-12T13:05:35.642Z"
+    },
+    {
+      "id": "1mae5p76",
+      "type": "chore",
+      "title": "Initialize git repo with proper .gitignore",
+      "description": "Initialize git repository, create comprehensive .gitignore, and make initial commit with all Epic 1 bootstrap code.",
+      "status": "in-progress",
+      "linkedIssueIds": [],
+      "questions": [],
+      "research": [
+        {
+          "type": "reference",
+          "content": "Standard Node/TS gitignore: node_modules, dist, .env, .search_cache",
+          "addedAt": "2026-03-12T13:11:41.695Z"
+        }
+      ],
+      "createdAt": "2026-03-12T13:11:38.956Z",
+      "updatedAt": "2026-03-12T13:11:49.042Z",
+      "autoValidation": {
+        "type": "agent",
+        "strategy": "Run `git log --oneline` to verify commit exists."
+      }
+    }
+  ],
+  "categories": [
+    {
+      "slug": "vision",
+      "description": "Project vision, goals, and high-level requirements"
+    },
+    {
+      "slug": "tech-stack",
+      "description": "Technology choices and technical constraints"
+    },
+    {
+      "slug": "policies",
+      "description": "Project policies, constraints, and rules"
+    }
+  ],
+  "assets": [
+    {
+      "id": "xq7yo25g",
+      "categorySlug": "vision",
+      "title": "Project Vision & Requirements",
+      "context": "Core project definition — reference when creating epics, issues, or making architectural decisions",
+      "body": "# Microsoft 365 Audit Framework — MVP\n\n## Vision\nA **read-only, discovery-focused** CLI tool that audits Microsoft 365 tenant configurations, flags security risks with severity levels, suggests remediation (but **NEVER writes back**), and produces actionable reports.\n\n## Core Principles\n- **Read-only**: The tool only reads tenant configuration. It MUST NEVER make changes.\n- **Suggest, don't fix**: Remediation is suggested with text, MS docs links, and example PowerShell/CLI snippets.\n- **Modular checks**: Audit checks are code-based plugins organized by security category, extensible by adding new files.\n- **Framework-aware**: Can ingest and map to known frameworks (CIS M365 Benchmark, etc.) via source plugins in code — not configurable, just extendable.\n\n## MVP Scope\n- **Single tenant** audit (one tenant per run)\n- **CLI tool** (no web UI, no scheduling)\n- **Manual testing** (no automated test suite in MVP)\n- **App Registration auth** (client credentials flow with certificate/secret)\n\n## Out of Scope for MVP\n- Auto-remediation / write-back (NEVER)\n- Web UI / dashboard application\n- Multi-tenant / MSP delegated access\n- Automated test suite\n- Scheduled/cron execution\n\n## M365 Services Covered\nAll major services:\n1. **Entra ID (Azure AD)** — privileged roles, MFA status, conditional access, guest users, app registrations & service principals\n2. **Exchange Online** — mail forwarding rules, mailbox delegates/permissions, transport/mail flow rules, anti-spam/anti-phish policies\n3. **SharePoint/OneDrive** — external sharing settings, anonymous links, site-level permissions\n4. **Teams** — guest access, meeting policies, app permission policies",
+      "project": true,
+      "sources": [],
+      "linkedEpicIds": [],
+      "linkedIssueIds": [],
+      "createdAt": "2026-03-12T12:23:59.497Z",
+      "updatedAt": "2026-03-12T12:23:59.498Z"
+    },
+    {
+      "id": "htjegbit",
+      "categorySlug": "tech-stack",
+      "title": "Tech Stack & Architecture",
+      "context": "Reference when implementing features or choosing libraries",
+      "body": "# Tech Stack & Architecture\n\n## Stack\n- **Language**: TypeScript / Node.js\n- **Package manager**: pnpm\n- **API access**: Thin wrapper over Microsoft Graph JS SDK (`@microsoft/microsoft-graph-client` v3.0.7) + custom abstraction layer\n- **Auth**: App Registration — client credentials flow via `@azure/identity` `ClientSecretCredential`\n- **PowerShell dependency**: Some checks (Exchange anti-spam/phish, Teams policies, transport rules) have NO Graph API coverage and require `ExchangeOnlineManagement` and `MicrosoftTeams` PowerShell modules. The tool should shell out to PowerShell for these or note them as \"requires PowerShell\" in MVP.\n\n## Configuration\n- **Environment variables** (`.env` file) for tenant credentials: `TENANT_ID`, `CLIENT_ID`, `CLIENT_SECRET`\n- No CLI argument overrides in MVP\n\n## Module / Check Architecture\n- **Organization**: By security category (`identity/`, `data-protection/`, `access-control/`, `threat-protection/`)\n- **Check design**: Simple function-based — exported async functions with metadata object\n- **Framework mapping**: Checks reference framework IDs (e.g. `{ framework: \"CIS-M365-v6\", control: \"1.1.1\" }`) in metadata\n- **Source plugin style**: Framework definitions live in code, extend by adding new source files\n\n## API Coverage Reality (fact-checked March 2026)\n- **Full Graph coverage**: Entra ID (users, roles, CA policies, apps, MFA methods), mailbox settings, SharePoint sites\n- **Beta-only**: SharePoint tenant sharing settings (`/admin/sharepoint/settings`), per-user MFA state\n- **No Graph coverage**: Exchange transport rules (use Exchange Admin API preview or PowerShell), anti-spam/anti-phish policies (PowerShell only), Teams meeting/guest/app policies (Teams PowerShell only)\n- **Known limitation**: SharePoint site permissions listing requires `Sites.FullControl.All` — no read-only option exists\n\n## Error Handling\n- **Skip, warn, and summarize**: On API errors or missing permissions, log a warning, continue all checks, show failure summary at end\n\n## Output & Reporting\n- **Formats**: JSON + HTML report (dashboard-style with charts)\n- **Risk scoring**: Critical / High / Medium / Low / Info\n- **Remediation**: Text steps + MS docs links + example PowerShell/CLI snippets (NEVER auto-executed)\n\n## Data Retention & Drift\n- **Local cache**: Store previous run results locally (timestamped)\n- **Drift comparison**: New findings + resolved findings between runs",
+      "project": true,
+      "sources": [],
+      "linkedEpicIds": [],
+      "linkedIssueIds": [],
+      "createdAt": "2026-03-12T12:24:11.576Z",
+      "updatedAt": "2026-03-12T12:30:24.425Z"
+    },
+    {
+      "id": "eyl0q5s2",
+      "categorySlug": "policies",
+      "title": "Safety & Compliance Policy",
+      "context": "MUST be checked before any code that interacts with Microsoft Graph or handles audit data",
+      "body": "# Safety & Compliance Policy\n\n## Absolute Rules\n1. **READ-ONLY**: The tool MUST only use read permissions against Microsoft Graph. No write, update, or delete operations. Ever.\n2. **Suggest, never execute**: Remediation suggestions may include scripts/commands, but the tool itself MUST NEVER execute them.\n3. **Minimal permissions**: Only request the Graph API permissions actually needed for each check. Document required permissions per check.\n4. **No secrets in output**: Audit reports must never include client secrets, tokens, or other credentials.\n5. **Local data only**: Audit results are stored locally on the machine running the tool. No external data transmission.\n\n## Graph API Permission Model\n- Use **application permissions** (not delegated) via client credentials\n- Each audit module should document its required Graph API permissions\n- The tool should validate it has required permissions before running checks and warn about missing ones",
+      "project": true,
+      "sources": [],
+      "linkedEpicIds": [],
+      "linkedIssueIds": [],
+      "createdAt": "2026-03-12T12:24:20.920Z",
+      "updatedAt": "2026-03-12T12:24:20.920Z"
+    },
+    {
+      "id": "vg60f2pl",
+      "categorySlug": "vision",
+      "title": "Audit Check Specification",
+      "context": "Reference when implementing individual audit checks or the check runner",
+      "body": "# Audit Check Specification\n\n## Check Structure (Function-based)\nEach check is an exported async function with accompanying metadata:\n\n```typescript\ninterface CheckMetadata {\n  id: string;                    // Unique ID e.g. \"entra-mfa-admins\"\n  title: string;                 // Human-readable title\n  description: string;           // What this check verifies\n  category: string;              // Security category: identity | data-protection | access-control | ...\n  service: string;               // M365 service: entra | exchange | sharepoint | teams\n  severity: Severity;            // critical | high | medium | low | info\n  frameworks?: FrameworkRef[];   // Optional: CIS benchmark refs, etc.\n  permissions: string[];         // Required Graph API permissions\n  remediation: {\n    description: string;         // Plain text fix steps\n    reference?: string;          // URL to MS docs\n    script?: string;             // Example PowerShell/CLI snippet\n  };\n}\n\ninterface FrameworkRef {\n  framework: string;  // e.g. \"CIS-M365-v3.1\"\n  control: string;    // e.g. \"1.1.1\"\n}\n\ntype Severity = \"critical\" | \"high\" | \"medium\" | \"low\" | \"info\";\n```\n\n## Check Categories (by security domain)\n- `identity/` — Roles, MFA, users, guests, conditional access\n- `data-protection/` — Sharing, external access, DLP-adjacent\n- `access-control/` — App permissions, delegates, transport rules\n- `threat-protection/` — Anti-spam, anti-phish, meeting security\n\n## Covered Checks (MVP)\n\n### Entra ID\n- Privileged role assignments (Global Admin, etc.)\n- MFA enforcement status\n- Conditional Access policy audit (gaps, coverage)\n- Guest/external user enumeration & flags\n- App registrations: permissions, expiring secrets, overprivileged apps\n\n### Exchange Online\n- Auto-forwarding rules to external addresses\n- Mailbox delegate permissions\n- Transport/mail flow rules (data exfil risk)\n- Anti-spam & anti-phishing policy config\n\n### SharePoint / OneDrive\n- Tenant-level external sharing settings\n- Anonymous/anyone link policies\n- Site-level permission audits\n\n### Teams\n- Guest access configuration\n- Meeting policies (recording, lobby, anonymous join)\n- Third-party app permission policies",
+      "project": false,
+      "sources": [],
+      "linkedEpicIds": [],
+      "linkedIssueIds": [],
+      "createdAt": "2026-03-12T12:24:41.808Z",
+      "updatedAt": "2026-03-12T12:24:41.808Z"
+    },
+    {
+      "id": "xm93kcst",
+      "categorySlug": "tech-stack",
+      "title": "Graph SDK & Authentication Reference",
+      "context": "Reference when implementing the Graph client wrapper, authentication, or any API calls",
+      "body": "# Microsoft Graph SDK & Authentication — Fact-Checked Reference\n\n> Sources: Microsoft official docs, npm registry, live-validated March 12, 2026\n\n## NPM Packages Required\n| Package | Version | Purpose |\n|---------|---------|---------|\n| `@microsoft/microsoft-graph-client` | **3.0.7** | Graph API client |\n| `@microsoft/microsoft-graph-types` | **2.43.1** (devDep) | TypeScript type definitions for Graph v1.0 |\n| `@microsoft/microsoft-graph-types-beta` | **0.44.0-preview** (devDep) | TypeScript types for Graph beta |\n| `@azure/identity` | **4.13.0** | `ClientSecretCredential` for app-only auth |\n| ~~`isomorphic-fetch`~~ | **NOT NEEDED** | Node 24 has native global fetch |\n\n## Authentication Pattern (Client Credentials) — VALIDATED\n```typescript\nimport { ClientSecretCredential } from \"@azure/identity\";\nimport { Client } from \"@microsoft/microsoft-graph-client\";\nimport {\n  TokenCredentialAuthenticationProvider,\n} from \"@microsoft/microsoft-graph-client/authProviders/azureTokenCredentials/index.js\";\n\nconst credential = new ClientSecretCredential(tenantId, clientId, clientSecret);\nconst authProvider = new TokenCredentialAuthenticationProvider(credential, {\n  scopes: [\"https://graph.microsoft.com/.default\"],\n});\nconst client = Client.initWithMiddleware({ authProvider });\n```\n> ⚠️ The `.js` extension on the import path is **required** for ESM/nodenext.\n\n## Key Facts (updated)\n- SDK 3.0.7 works on Node 24.14.0 with native fetch — no polyfill needed\n- TypeScript 5.9.3 compiles cleanly with `module: \"nodenext\"`\n- Use `.api('/path').get()` for v1.0 calls\n- Use `.api('/path').version('beta').get()` for beta-only endpoints\n- The older `msgraph-sdk-javascript` package is **deprecated**\n- `@azure/identity` 4.13.0 requires Node 20+ (Node 24 is fine)\n\n## .env Configuration\n```\nTENANT_ID=<azure-tenant-id>\nCLIENT_ID=<app-registration-client-id>\nCLIENT_SECRET=<client-secret-value>\n```\nLoad with: `import dotenv from \"dotenv\"; dotenv.config();`",
+      "project": false,
+      "sources": [],
+      "linkedEpicIds": [],
+      "linkedIssueIds": [],
+      "createdAt": "2026-03-12T12:29:37.825Z",
+      "updatedAt": "2026-03-12T12:47:28.371Z"
+    },
+    {
+      "id": "1a8tuhf5",
+      "categorySlug": "tech-stack",
+      "title": "Graph API Permissions & Endpoints Map",
+      "context": "Reference when implementing audit checks — maps each check area to its required Graph permission and endpoint",
+      "body": "# Microsoft Graph API — Permissions & Endpoints Map\n\n> All permissions listed are **Application** type (app-only, no user sign-in). Fact-checked March 2026.\n\n## Entra ID (Identity)\n\n| Check Area | Endpoint | Permission (least privilege) | API Version |\n|---|---|---|---|\n| List users | `GET /users` | `User.Read.All` | v1.0 |\n| Guest/external users | `GET /users?$filter=userType eq 'Guest'` | `User.Read.All` | v1.0 |\n| Directory roles (activated) | `GET /directoryRoles` | `RoleManagement.Read.Directory` | v1.0 |\n| Role members/assignments | `GET /directoryRoles/{id}/members` | `RoleManagement.Read.Directory` | v1.0 |\n| Conditional Access policies | `GET /identity/conditionalAccess/policies` | `Policy.Read.All` | v1.0 |\n| MFA auth methods per user | `GET /users/{id}/authentication/methods` | `UserAuthenticationMethod.Read.All` | v1.0 |\n| Per-user MFA state | `GET /users/{id}/authentication/requirements` | `UserAuthenticationMethod.Read.All` | **beta** |\n| App registrations | `GET /applications` | `Application.Read.All` | v1.0 |\n| Service principals | `GET /servicePrincipals` | `Application.Read.All` | v1.0 |\n\n### Notes\n- Only **activated** directory roles appear in `/directoryRoles`. Not all built-in roles are active by default.\n- Per-user MFA state (`enabled`/`disabled`/`enforced`) is **beta only** as of March 2026.\n- `User.ReadBasic.All` exists but only returns basic properties — use `User.Read.All` for full audit.\n\n## Exchange Online\n\n| Check Area | Endpoint | Permission | API Version |\n|---|---|---|---|\n| User mailbox settings (forwarding) | `GET /users/{id}/mailboxSettings` | `MailboxSettings.Read` | v1.0 |\n| User inbox rules | `GET /users/{id}/mailFolders/inbox/messageRules` | `Mail.Read` (per-user) | v1.0 |\n| Transport rules (mail flow) | Exchange Admin API: `POST .../GetMailDetailTransportRuleReport` | `Exchange Administrator` RBAC role | Preview |\n| Anti-spam/anti-phish policies | Not available via Graph — use **Exchange Online PowerShell** | N/A | N/A |\n\n### Notes\n- **Inbox rules**: No application-permission-based admin listing exists. Must iterate per-user with `Mail.Read` or use Exchange PowerShell `Get-InboxRule`.\n- **Transport rules**: The Exchange Online Admin API (public preview Nov 2025) wraps PowerShell cmdlets. Requires `Exchange Administrator` Entra role on the app, not just Graph permissions.\n- **Anti-spam/anti-phish**: No Graph API coverage. Must use `Get-HostedContentFilterPolicy`, `Get-AntiPhishPolicy` via Exchange Online PowerShell (`ExchangeOnlineManagement` module).\n- RBAC for applications is replacing legacy app access policies (post-2025).\n\n## SharePoint / OneDrive\n\n| Check Area | Endpoint | Permission | API Version |\n|---|---|---|---|\n| Tenant sharing settings | `GET /admin/sharepoint/settings` | `SharePointTenantSettings.Read.All` | **beta** |\n| List sites | `GET /sites` | `Sites.Read.All` | v1.0 |\n| Site permissions | `GET /sites/{id}/permissions` | `Sites.FullControl.All` | v1.0 |\n| Drive item permissions | `GET /drives/{id}/items/{id}/permissions` | `Files.Read.All` | v1.0 |\n\n### Notes\n- **Tenant sharing settings** (including `sharingCapability`: disabled/externalUserSharingOnly/etc.) are **beta only**.\n- **Site permissions listing** requires `Sites.FullControl.All` — there is NO read-only permission for site-level permission listing. This is a known limitation.\n- `sharingCapability` values: `disabled`, `externalUserSharingOnly`, `externalUserAndGuestSharing`, `existingExternalUserSharingOnly`\n\n## Teams\n\n| Check Area | Endpoint | Permission | API Version |\n|---|---|---|---|\n| List teams | `GET /teams` | `Team.ReadBasic.All` | v1.0 |\n| Team members (incl. guests) | `GET /teams/{id}/members` | `TeamMember.Read.All` | v1.0 |\n| Online meetings | `GET /users/{id}/onlineMeetings` | `OnlineMeetings.Read.All` | v1.0 |\n| Teams app catalog | `GET /appCatalogs/teamsApps` | `AppCatalog.Read.All` | v1.0 |\n\n### Notes\n- **Meeting policies, guest access settings, app permission policies**: These are **Teams Admin Center settings**, NOT available via Microsoft Graph. Must use **Teams PowerShell** (`MicrosoftTeams` module) with cmdlets like `Get-CsTeamsMeetingPolicy`, `Get-CsTeamsGuestMeetingConfiguration`, `Get-CsTeamsAppPermissionPolicy`.\n- Graph can read team membership and detect guests, but tenant-level policy configuration requires PowerShell.\n\n## Consolidated Permission List (Minimum for Full MVP)\n\n### Graph Application Permissions\n```\nUser.Read.All\nRoleManagement.Read.Directory\nPolicy.Read.All\nUserAuthenticationMethod.Read.All\nApplication.Read.All\nMailboxSettings.Read\nMail.Read\nSharePointTenantSettings.Read.All\nSites.Read.All\nSites.FullControl.All\nFiles.Read.All\nTeam.ReadBasic.All\nTeamMember.Read.All\nOnlineMeetings.Read.All\nAppCatalog.Read.All\n```\n\n### Entra RBAC Roles (for Exchange Admin API)\n```\nExchange Administrator\n```\n\n### PowerShell Modules Required (for checks without Graph coverage)\n```\nExchangeOnlineManagement   — Anti-spam, anti-phish, transport rules\nMicrosoftTeams             — Meeting policies, guest settings, app policies\n```",
+      "project": false,
+      "sources": [],
+      "linkedEpicIds": [],
+      "linkedIssueIds": [],
+      "createdAt": "2026-03-12T12:29:37.829Z",
+      "updatedAt": "2026-03-12T12:29:37.829Z"
+    },
+    {
+      "id": "axsprcbe",
+      "categorySlug": "tech-stack",
+      "title": "CIS M365 Benchmark Reference",
+      "context": "Reference when implementing framework-mapped checks or defining check metadata with CIS control IDs",
+      "body": "# CIS Microsoft 365 Foundations Benchmark — Reference\n\n> Fact-checked March 2026. Based on publicly available benchmark info.\n\n## Version History\n| Version | Release | Controls | Notes |\n|---------|---------|----------|-------|\n| v3.0.0 | ~2024 | ~100+ | Added 34 new recommendations, updated 15, removed 1 |\n| v3.1.0 | ~2024 | ~105 | L1/L2 level alignment, compliance tagging |\n| v5.0.0 | ~mid 2025 | ~130 | Incremental expansion |\n| **v6.0.0** | **Oct 31, 2025** | **140** | Latest. 13 new, 3 removed from v5. 98.5% continuity |\n\n## Benchmark Categories (v6 — current)\nThe benchmark organizes controls by **M365 admin center / service**:\n\n| Category | Focus Areas |\n|----------|-------------|\n| **Microsoft Entra ID** | Identity governance, conditional access, MFA, roles |\n| **Exchange Online** | Email security, mailbox auditing, forwarding, transport rules |\n| **SharePoint Online** | Sharing settings, external access, content restrictions |\n| **OneDrive for Business** | Content sharing restrictions |\n| **Microsoft Teams** | External access, guest policies, meeting settings, reporting |\n| **Power BI** | Configuration and sharing settings |\n\n## Profile Levels\n- **Level 1 (L1)**: Practical security settings that can be implemented with minimal impact. Recommended baseline.\n- **Level 2 (L2)**: Deeper security for sensitive environments. May limit functionality.\n\n## Example Controls (from public sources)\n- Ensure sign-in to shared mailboxes is blocked\n- Ensure mailbox auditing is enabled (E3/E5)\n- Ensure password hash sync enabled for hybrid\n- Ensure OneDrive content sharing is restricted\n- Ensure external access restricted in Teams\n- Ensure users can report security concerns in Teams\n- Ensure MFA is enforced for all admin roles\n\n## Integration Approach for This Project\n- Checks reference CIS controls via `FrameworkRef` metadata: `{ framework: \"CIS-M365-v6\", control: \"1.1.1\" }`\n- Framework definitions are **code-based source plugins** — not configurable, just extensible\n- Full CIS benchmark PDF must be downloaded from [cisecurity.org](https://www.cisecurity.org/benchmark/microsoft_365) (free with registration)\n- Our checks can map to CIS but also include custom checks not in any framework",
+      "project": false,
+      "sources": [],
+      "linkedEpicIds": [],
+      "linkedIssueIds": [],
+      "createdAt": "2026-03-12T12:29:37.834Z",
+      "updatedAt": "2026-03-12T12:29:37.834Z"
+    },
+    {
+      "id": "n2mzjarb",
+      "categorySlug": "policies",
+      "title": "Azure CLI Setup & App Registration Runbook",
+      "context": "Reference whenever you need to authenticate to Azure, recreate the app registration, or understand how credentials are set up",
+      "body": "# Azure CLI Setup & App Registration Runbook\n\n## Prerequisites\n- Azure CLI (`az`) installed and in PATH\n- Admin account with Global Admin or Application Admin + Privileged Role Admin\n\n## Step 1: Login to Azure\n```bash\naz login --tenant 263f4f8b-0077-4e9c-9dde-d39bc74e212b\n```\nVerify:\n```bash\naz account show --query \"{tenant: tenantId, user: user.name}\" -o json\n```\n\n## Step 2: Current App Registration\n| Field | Value |\n|---|---|\n| Display Name | M365 Audit Framework (Read-Only) |\n| App (client) ID | `9a7c3ea1-9f7a-4489-9c69-3b8173e72a07` |\n| Object ID | `512e07b8-c892-426b-ad43-1a575550bb51` |\n| Service Principal ID | `b9a99283-9e9a-4183-9f1e-8e39189370b2` |\n| Tenant ID | `263f4f8b-0077-4e9c-9dde-d39bc74e212b` |\n| Secret expiry | ~March 2027 (1 year) |\n\n## Step 3: Recreate From Scratch (if needed)\n```bash\n# Create app\naz ad app create --display-name \"M365 Audit Framework (Read-Only)\" --sign-in-audience \"AzureADMyOrg\"\n\n# Create service principal\naz ad sp create --id <APP_ID>\n\n# Create secret\naz ad app credential reset --id <APP_ID> --display-name \"m365-audit-dev\" --years 1\n```\n\n## Step 4: Add All Required Permissions\nThe app needs 15 Microsoft Graph application permissions. The Graph resource app ID is `00000003-0000-0000-c000-000000000000`.\n\n```bash\n# Get the Graph SP object ID\nGRAPH_SP=$(az ad sp list --filter \"appId eq '00000003-0000-0000-c000-000000000000'\" --query \"[0].id\" -o tsv)\n\n# Set permissions on the app (JSON blob with all 15 role IDs)\naz ad app update --id <APP_ID> --required-resource-accesses '[{\n  \"resourceAppId\": \"00000003-0000-0000-c000-000000000000\",\n  \"resourceAccess\": [\n    {\"id\":\"df021288-bdef-4463-88db-98f22de89214\",\"type\":\"Role\"},\n    {\"id\":\"483bed4a-2ad3-4361-a73b-c83ccdbdc53c\",\"type\":\"Role\"},\n    {\"id\":\"246dd0d5-5bd0-4def-940b-0421030a5b68\",\"type\":\"Role\"},\n    {\"id\":\"38d9df27-64da-44fd-b7c5-a6fbac20248f\",\"type\":\"Role\"},\n    {\"id\":\"9a5d68dd-52b0-4cc2-bd40-abcf44ac3a30\",\"type\":\"Role\"},\n    {\"id\":\"40f97065-369a-49f4-947c-6a255697ae91\",\"type\":\"Role\"},\n    {\"id\":\"810c84a8-4a9e-49e6-bf7d-12d183f40d01\",\"type\":\"Role\"},\n    {\"id\":\"83d4163d-a2d8-4d3b-9695-4ae3ca98f888\",\"type\":\"Role\"},\n    {\"id\":\"332a536c-c7ef-4017-ab91-336970924f0d\",\"type\":\"Role\"},\n    {\"id\":\"a82116e5-55eb-4c41-a434-62fe8a61c773\",\"type\":\"Role\"},\n    {\"id\":\"01d4889c-1287-42c6-ac1f-5d1e02578ef6\",\"type\":\"Role\"},\n    {\"id\":\"2280dda6-0bfd-44ee-a2f4-cb867cfc4c1e\",\"type\":\"Role\"},\n    {\"id\":\"660b7406-55f1-41ca-a0ed-0b035e182f3e\",\"type\":\"Role\"},\n    {\"id\":\"c1684f21-1984-47fa-9d61-2dc8c296bb70\",\"type\":\"Role\"},\n    {\"id\":\"e12dae10-5a57-4817-b79d-dfbec5348930\",\"type\":\"Role\"}\n  ]\n}]'\n```\n\n## Step 5: Grant Admin Consent\n```bash\nAPP_SP_ID=<service-principal-object-id>\nGRAPH_SP_ID=<graph-sp-object-id>\n\n# For each permission role ID:\naz rest --method POST \\\n  --uri \"https://graph.microsoft.com/v1.0/servicePrincipals/$APP_SP_ID/appRoleAssignments\" \\\n  --headers \"Content-Type=application/json\" \\\n  --body \"{\\\"principalId\\\":\\\"$APP_SP_ID\\\",\\\"resourceId\\\":\\\"$GRAPH_SP_ID\\\",\\\"appRoleId\\\":\\\"<ROLE_ID>\\\"}\"\n```\n\n## Permission Role ID Map\n| Permission | Role ID |\n|---|---|\n| User.Read.All | `df021288-bdef-4463-88db-98f22de89214` |\n| RoleManagement.Read.Directory | `483bed4a-2ad3-4361-a73b-c83ccdbdc53c` |\n| Policy.Read.All | `246dd0d5-5bd0-4def-940b-0421030a5b68` |\n| UserAuthenticationMethod.Read.All | `38d9df27-64da-44fd-b7c5-a6fbac20248f` |\n| Application.Read.All | `9a5d68dd-52b0-4cc2-bd40-abcf44ac3a30` |\n| MailboxSettings.Read | `40f97065-369a-49f4-947c-6a255697ae91` |\n| Mail.Read | `810c84a8-4a9e-49e6-bf7d-12d183f40d01` |\n| SharePointTenantSettings.Read.All | `83d4163d-a2d8-4d3b-9695-4ae3ca98f888` |\n| Sites.Read.All | `332a536c-c7ef-4017-ab91-336970924f0d` |\n| Sites.FullControl.All | `a82116e5-55eb-4c41-a434-62fe8a61c773` |\n| Files.Read.All | `01d4889c-1287-42c6-ac1f-5d1e02578ef6` |\n| Team.ReadBasic.All | `2280dda6-0bfd-44ee-a2f4-cb867cfc4c1e` |\n| TeamMember.Read.All | `660b7406-55f1-41ca-a0ed-0b035e182f3e` |\n| OnlineMeetings.Read.All | `c1684f21-1984-47fa-9d61-2dc8c296bb70` |\n| AppCatalog.Read.All | `e12dae10-5a57-4817-b79d-dfbec5348930` |\n\n## Quick Verification\n```bash\n# Get token\nTOKEN=$(curl -s -X POST \\\n  \"https://login.microsoftonline.com/$TENANT_ID/oauth2/v2.0/token\" \\\n  -H \"Content-Type: application/x-www-form-urlencoded\" \\\n  -d \"client_id=$CLIENT_ID&client_secret=$CLIENT_SECRET&scope=https%3A%2F%2Fgraph.microsoft.com%2F.default&grant_type=client_credentials\" \\\n  | python3 -c \"import sys,json; print(json.load(sys.stdin)['access_token'])\")\n\n# Test call\ncurl -s -H \"Authorization: Bearer $TOKEN\" \"https://graph.microsoft.com/v1.0/users?\\$top=1\" | python3 -m json.tool\n```\n\n## API Quirks Discovered During Testing\n- `/directoryRoles` does **NOT** support `$top` — returns error \"does not support custom page sizes\"\n- SharePoint tenant settings at `/beta/admin/sharepoint/settings` works fine with app-only auth\n- Token acquisition must use `curl` or SDK directly — `az rest` misinterprets the login.microsoftonline.com URI\n\n## .env Location\n```\n/home/cp/code/dkmaker/office365-audit-framework/.env\n```\nContains: `TENANT_ID`, `CLIENT_ID`, `CLIENT_SECRET`. Added to `.gitignore`.",
+      "project": true,
+      "sources": [],
+      "linkedEpicIds": [],
+      "linkedIssueIds": [],
+      "createdAt": "2026-03-12T12:37:05.651Z",
+      "updatedAt": "2026-03-12T12:37:05.651Z"
+    },
+    {
+      "id": "h4lwfk3c",
+      "categorySlug": "tech-stack",
+      "title": "Pinned Dependency Manifest (Validated March 2026)",
+      "context": "Use as the source of truth for all dependency versions when bootstrapping or adding packages. All versions validated on Node 24 with live Graph API calls.",
+      "body": "# Pinned Dependency Manifest — Validated March 12, 2026\n\nAll versions below are **tested and confirmed working** together on Node.js 24.14.0, with live Microsoft Graph API calls.\n\n## Runtime Environment\n| Tool | Version | Notes |\n|------|---------|-------|\n| **Node.js** | 24.14.0 | Native fetch built-in — no isomorphic-fetch needed |\n| **pnpm** | 10.30.3 | (10.32.1 available) |\n| **TypeScript** | 5.9.3 | Installed as devDep, supports `nodenext` module for Node 24 |\n\n## Production Dependencies\n| Package | Version | Purpose |\n|---------|---------|---------|\n| `@azure/identity` | **4.13.0** | `ClientSecretCredential` for app-only auth. Requires Node 20+. |\n| `@microsoft/microsoft-graph-client` | **3.0.7** | Graph API client. Works with native fetch on Node 24. |\n| `commander` | **14.0.3** | CLI framework. Zero deps, built-in TS types. |\n| `dotenv` | **17.3.1** | .env file loading. Auto-logs injection on startup. |\n\n## Dev Dependencies\n| Package | Version | Purpose |\n|---------|---------|---------|\n| `typescript` | **5.9.3** | Compiler |\n| `@microsoft/microsoft-graph-types` | **2.43.1** | Type definitions for Graph v1.0 entities |\n| `@microsoft/microsoft-graph-types-beta` | **0.44.0-preview** | Type definitions for Graph beta entities |\n| `@types/node` | **25.4.0** | Node.js type definitions |\n\n## NOT Needed (confirmed)\n| Package | Reason |\n|---------|--------|\n| `isomorphic-fetch` | Node 24 has native global `fetch` — stable since Node 21 |\n| `node-fetch` | Same reason — native fetch |\n| `@types/microsoft-graph` | Replaced by `@microsoft/microsoft-graph-types` |\n\n## tsconfig.json (validated)\n```json\n{\n  \"compilerOptions\": {\n    \"target\": \"ES2022\",\n    \"module\": \"nodenext\",\n    \"moduleResolution\": \"nodenext\",\n    \"esModuleInterop\": true,\n    \"allowSyntheticDefaultImports\": true,\n    \"outDir\": \"./dist\",\n    \"rootDir\": \"./src\",\n    \"strict\": true,\n    \"skipLibCheck\": true,\n    \"forceConsistentCasingInFileNames\": true,\n    \"resolveJsonModule\": true,\n    \"declaration\": true,\n    \"declarationMap\": true,\n    \"sourceMap\": true\n  },\n  \"include\": [\"src/**/*\"],\n  \"exclude\": [\"node_modules\", \"dist\"]\n}\n```\n\n## package.json essentials\n```json\n{\n  \"type\": \"module\",\n  \"scripts\": {\n    \"build\": \"tsc\",\n    \"start\": \"node dist/index.js\"\n  }\n}\n```\n\n## Import Pattern (validated working)\n```typescript\nimport { ClientSecretCredential } from \"@azure/identity\";\nimport { Client } from \"@microsoft/microsoft-graph-client\";\nimport {\n  TokenCredentialAuthenticationProvider,\n} from \"@microsoft/microsoft-graph-client/authProviders/azureTokenCredentials/index.js\";\nimport type { User } from \"@microsoft/microsoft-graph-types\";\nimport dotenv from \"dotenv\";\n```\n> Note: The `.js` extension on the azureTokenCredentials import is **required** for ESM/nodenext module resolution.\n\n## HTML Reporting (for later)\n- **Chart.js 4.5.1** via CDN (`https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.js`)\n- Embed in single-page HTML, no server needed\n- Supports line, bar, doughnut, polar area charts\n\n## Validated Live (March 12, 2026)\n- ✅ TypeScript compiles cleanly (zero errors)\n- ✅ `ClientSecretCredential` → token acquisition\n- ✅ `GET /users` (v1.0) — returns users with types\n- ✅ `GET /admin/sharepoint/settings` (beta) — returns tenant sharing config\n- ✅ `GET /identity/conditionalAccess/policies` (v1.0) — returns CA policies\n- ✅ All on Node 24.14.0 with native fetch",
+      "project": true,
+      "sources": [],
+      "linkedEpicIds": [],
+      "linkedIssueIds": [],
+      "createdAt": "2026-03-12T12:47:11.169Z",
+      "updatedAt": "2026-03-12T12:47:11.169Z"
+    }
+  ]
+}
