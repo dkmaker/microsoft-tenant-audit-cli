@@ -2,6 +2,8 @@
 import { Command } from "commander";
 import { loadConfig } from "./config.js";
 import { createGraphClient } from "./graph/client.js";
+import { runChecks } from "./checks/runner.js";
+import type { AuditReport, CheckRunResult } from "./checks/types.js";
 import { AuditErrorCollector } from "./utils/errors.js";
 
 const program = new Command()
@@ -37,9 +39,46 @@ program
       const errorCollector = new AuditErrorCollector();
 
       // TODO: Permission validation (issue 0mcl9vkj)
-      // TODO: Run audit checks
 
-      console.log("\n✅ Audit framework initialized successfully.");
+      // Run audit checks
+      console.log("\n🏃 Running checks...\n");
+
+      const statusIcon: Record<string, string> = {
+        pass: "✅",
+        fail: "❌",
+        warn: "⚠️",
+        error: "💥",
+      };
+
+      const report = await runChecks(
+        { graphClient: client, config },
+        {
+          categories: config.categories,
+          onProgress: (_completed, _total, result: CheckRunResult) => {
+            const icon = statusIcon[result.result.status] ?? "?";
+            console.log(
+              `  ${icon} [${result.meta.id}] ${result.meta.name} (${result.durationMs}ms)`,
+            );
+            if (result.result.findings?.length) {
+              for (const f of result.result.findings) {
+                console.log(`      → ${f.resource}: ${f.detail}`);
+              }
+            }
+          },
+        },
+      );
+
+      // Print summary
+      const { summary } = report;
+      console.log("\n============================");
+      console.log("📊 Audit Summary");
+      console.log(`   Total:  ${summary.total}`);
+      console.log(`   ✅ Pass:  ${summary.pass}`);
+      console.log(`   ❌ Fail:  ${summary.fail}`);
+      console.log(`   ⚠️  Warn:  ${summary.warn}`);
+      console.log(`   💥 Error: ${summary.error}`);
+      console.log("============================");
+
       errorCollector.printSummary();
     } catch (error) {
       console.error("\n❌ Fatal error:", error instanceof Error ? error.message : error);
