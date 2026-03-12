@@ -693,28 +693,28 @@
       "description": "Create public GitHub repo, ensure no secrets in history, commit all work, push to dkmaker/microsoft-tenant-audit-cli.",
       "body": "",
       "priority": 8,
-      "status": "draft",
+      "status": "closed",
       "relevantFiles": [],
       "todos": [
         {
           "text": "Audit git history for leaked secrets/tokens",
-          "done": false
+          "done": true
         },
         {
           "text": "Ensure .gitignore covers .env, output/, dist/, spike-poc/",
-          "done": false
+          "done": true
         },
         {
           "text": "Commit all pending work",
-          "done": false
+          "done": true
         },
         {
           "text": "Create public GitHub repo dkmaker/microsoft-tenant-audit-cli",
-          "done": false
+          "done": true
         },
         {
           "text": "Add remote origin and push",
-          "done": false
+          "done": true
         }
       ],
       "successCriteria": [
@@ -724,7 +724,27 @@
       ],
       "research": [],
       "createdAt": "2026-03-12T14:54:25.817Z",
-      "updatedAt": "2026-03-12T14:54:25.817Z"
+      "updatedAt": "2026-03-12T14:57:05.797Z",
+      "closeMessage": "Public repo live at https://github.com/dkmaker/microsoft-tenant-audit-cli. History audited — zero secrets. All MVP code pushed.",
+      "closeReason": "done",
+      "validations": [
+        {
+          "criterion": "Public repo exists at github.com/dkmaker/microsoft-tenant-audit-cli",
+          "evidence": "gh repo view confirms: url=https://github.com/dkmaker/microsoft-tenant-audit-cli, visibility=PUBLIC",
+          "met": true
+        },
+        {
+          "criterion": "No tokens, secrets, or .env files in any commit",
+          "evidence": "Full git history scanned with grep for sk-, ghp_, gho_, AKIA, password=, secret= — zero matches. .env never committed. GitHub repo tree confirmed no .env file.",
+          "met": true
+        },
+        {
+          "criterion": "All source code and README pushed successfully",
+          "evidence": "git push succeeded: 3 commits on main branch, 28 files in latest commit including README.md, all src/, .env.example.",
+          "met": true
+        }
+      ],
+      "closedAt": "2026-03-12T14:57:05.797Z"
     }
   ],
   "issues": [
@@ -2095,7 +2115,9 @@
       "description": "Create project documentation and config files for MVP release.\n\n## Requirements\n- README.md with: overview, prerequisites, setup, usage examples (all flags), output description, exit codes\n- .env.example with TENANT_ID, CLIENT_ID, CLIENT_SECRET placeholders\n- .gitignore covering dist/, output/, node_modules/, .env",
       "status": "closed",
       "epicId": "zrtsptlu",
-      "linkedIssueIds": [],
+      "linkedIssueIds": [
+        "h1cy5oci"
+      ],
       "questions": [],
       "research": [
         {
@@ -2105,7 +2127,7 @@
         }
       ],
       "createdAt": "2026-03-12T14:50:26.656Z",
-      "updatedAt": "2026-03-12T14:52:04.134Z",
+      "updatedAt": "2026-03-12T15:06:03.331Z",
       "autoValidation": {
         "type": "agent",
         "strategy": "Verify all 3 files exist and contain expected content"
@@ -2126,7 +2148,7 @@
       "type": "chore",
       "title": "Audit, commit, create repo, and push to GitHub",
       "description": "Verify no secrets in git history, commit all work, create public repo dkmaker/microsoft-tenant-audit-cli, add origin, push.\n\n## Steps\n1. Scan all commits for tokens/secrets\n2. Verify .gitignore blocks .env, output/, dist/\n3. Stage and commit all new/modified files\n4. Create public repo via `gh repo create`\n5. Add remote, push main branch",
-      "status": "in-progress",
+      "status": "closed",
       "epicId": "xgznedva",
       "linkedIssueIds": [],
       "questions": [],
@@ -2138,11 +2160,56 @@
         }
       ],
       "createdAt": "2026-03-12T14:54:36.764Z",
-      "updatedAt": "2026-03-12T14:55:01.109Z",
+      "updatedAt": "2026-03-12T14:56:48.794Z",
       "autoValidation": {
         "type": "agent",
         "strategy": "Verify repo exists on GitHub and git push succeeded with no secrets in history"
-      }
+      },
+      "closeMessage": "Created public repo, audited history for secrets (clean), committed all MVP work, pushed to dkmaker/microsoft-tenant-audit-cli.",
+      "closeReason": "done",
+      "validations": [
+        {
+          "criterion": "Verify no secrets in git history, commit all work, create public repo dkmaker/microsoft-tenant-audit-cli, add origin, push.\n\n## Steps\n1. Scan all commits for tokens/secrets\n2. Verify .gitignore blocks .env, output/, dist/\n3. Stage and commit all new/modified files\n4. Create public repo via `gh repo create`\n5. Add remote, push main branch",
+          "evidence": "Repo live at https://github.com/dkmaker/microsoft-tenant-audit-cli (PUBLIC). Git history scanned: no tokens/secrets found (grep for sk-, ghp_, gho_, AKIA, password=, secret= all clean). .env not in repo tree. 3 commits, all pushed to main. gh repo view confirms visibility=PUBLIC.",
+          "met": true
+        }
+      ],
+      "closedAt": "2026-03-12T14:56:48.794Z"
+    },
+    {
+      "id": "h1cy5oci",
+      "type": "bug",
+      "title": "Fix README for end-user audience; add `bin` field for global CLI install",
+      "description": "The README and package.json are developer-oriented rather than user-facing. An IT administrator should be able to install globally and run `o365-audit` from anywhere.\n\n**Problems:**\n1. **Missing `bin` field in package.json** — No CLI entry point defined, so `npm link` / `npm install -g` won't create a global command. Need `\"bin\": { \"o365-audit\": \"./dist/index.js\" }` and a `#!/usr/bin/env node` shebang in `src/index.ts`.\n2. **Broken package.json metadata** — `\"main\": \"index.js\"` points to non-existent file, `\"description\"` is empty.\n3. **README is dev-focused** — Tells users to `git clone`, `pnpm install`, `pnpm build`, `pnpm start audit`. IT admins should just install and run `o365-audit audit`.\n4. **No separation of user vs dev docs** — Build steps, type-check commands, and test instructions mixed into main README.\n\n**Fix:**\n- Add `\"bin\"` field to package.json + shebang on entry point\n- Fix `main`, `description` in package.json\n- Rewrite README for IT admin audience: clone/install globally, configure `.env`, run `o365-audit` CLI\n- Move build/test/dev instructions to a separate `DEVELOPMENT.md`",
+      "status": "closed",
+      "epicId": "zrtsptlu",
+      "linkedIssueIds": [
+        "d2fya6jh"
+      ],
+      "questions": [],
+      "research": [
+        {
+          "type": "reference",
+          "content": "**package.json `bin` field:** Add `\"bin\": { \"o365-audit\": \"./dist/index.js\" }`. This tells npm/pnpm to symlink `dist/index.js` as the `o365-audit` command on global install or `npm link`.\n\n**Shebang required:** First line of `src/index.ts` must be `#!/usr/bin/env node` so the compiled JS retains it. TypeScript preserves shebangs in output.\n\n**Installation flow for IT admins:**\n1. `git clone` + `cd` + `pnpm install` + `pnpm build`\n2. `npm link` (or `pnpm link --global`) to make `o365-audit` available globally\n3. Configure `.env` in working directory\n4. Run `o365-audit audit` from anywhere",
+          "addedAt": "2026-03-12T15:06:22.244Z"
+        }
+      ],
+      "createdAt": "2026-03-12T15:06:00.513Z",
+      "updatedAt": "2026-03-12T15:08:03.928Z",
+      "autoValidation": {
+        "type": "agent",
+        "strategy": "Verify package.json has bin field, entry point has shebang, README is user-focused, DEVELOPMENT.md exists with dev instructions"
+      },
+      "closeMessage": "Fixed all 4 problems: added `bin` field to package.json for global CLI install (`o365-audit`), fixed `main` and `description`, rewrote README for IT admin audience with `npm link` install flow, and moved dev instructions to DEVELOPMENT.md.",
+      "closeReason": "done",
+      "validations": [
+        {
+          "criterion": "The README and package.json are developer-oriented rather than user-facing. An IT administrator should be able to install globally and run `o365-audit` from anywhere.\n\n**Problems:**\n1. **Missing `bin` field in package.json** — No CLI entry point defined, so `npm link` / `npm install -g` won't create a global command. Need `\"bin\": { \"o365-audit\": \"./dist/index.js\" }` and a `#!/usr/bin/env node` shebang in `src/index.ts`.\n2. **Broken package.json metadata** — `\"main\": \"index.js\"` points to non-existent file, `\"description\"` is empty.\n3. **README is dev-focused** — Tells users to `git clone`, `pnpm install`, `pnpm build`, `pnpm start audit`. IT admins should just install and run `o365-audit audit`.\n4. **No separation of user vs dev docs** — Build steps, type-check commands, and test instructions mixed into main README.\n\n**Fix:**\n- Add `\"bin\"` field to package.json + shebang on entry point\n- Fix `main`, `description` in package.json\n- Rewrite README for IT admin audience: clone/install globally, configure `.env`, run `o365-audit` CLI\n- Move build/test/dev instructions to a separate `DEVELOPMENT.md`",
+          "evidence": "✅ bin field: `{ 'o365-audit': './dist/index.js' }` in package.json\n✅ Shebang: `#!/usr/bin/env node` on first line of dist/index.js\n✅ DEVELOPMENT.md exists (1548 bytes) with build/dev instructions\n✅ README uses `o365-audit audit` (5 occurrences), zero `pnpm start` references\n✅ package.json: main=dist/index.js, description populated\n✅ Build succeeds cleanly",
+          "met": true
+        }
+      ],
+      "closedAt": "2026-03-12T15:08:03.928Z"
     }
   ],
   "categories": [

@@ -1,63 +1,85 @@
 # 🛡️ Office 365 Security Audit Framework
 
-A comprehensive security audit tool for Microsoft 365 tenants. Checks identity, data protection, access control, and threat protection configurations against CIS benchmarks and security best practices.
+A command-line security audit tool for Microsoft 365 tenants. Scans Entra ID, Exchange Online, SharePoint, and Teams configurations against CIS benchmarks and security best practices.
 
 ## Features
 
-- **15+ security checks** across Entra ID, Exchange Online, SharePoint, and Teams
-- **HTML dashboard** with Chart.js charts — severity breakdown, service/category views, expandable findings
-- **JSON reports** for tooling integration
-- **Drift detection** — compare runs to identify new and resolved findings
-- **Remediation guidance** — description, documentation links, and PowerShell scripts per finding
+- **15+ security checks** across identity, data protection, access control, and threat protection
+- **HTML dashboard** with severity breakdown charts, expandable findings, and remediation guidance
+- **JSON reports** for automation and tooling integration
+- **Drift detection** — compare runs to spot new and resolved findings
 - **CIS M365 benchmark** mapping with framework references
-- **Color-coded CLI** with progress indicators and exit codes
 
 ## Prerequisites
 
-- Node.js 22+
-- pnpm
-- A Microsoft Entra ID (Azure AD) **App Registration** with the following **Application** (not Delegated) API permissions:
-  - `Directory.Read.All`
-  - `Policy.Read.All`
-  - `User.Read.All`
-  - `UserAuthenticationMethod.Read.All`
-  - `Sites.Read.All`
-  - `MailboxSettings.Read`
-  - `TeamSettings.ReadWrite.All`
+- **Node.js 22+** — [download](https://nodejs.org/)
+- **pnpm** — install with `npm install -g pnpm`
+- **Microsoft Entra ID App Registration** with the following **Application** (not Delegated) API permissions:
 
-## Setup
+| Permission | Purpose |
+|------------|---------|
+| `Directory.Read.All` | Read users, roles, groups |
+| `Policy.Read.All` | Read conditional access policies |
+| `User.Read.All` | Read user profiles |
+| `UserAuthenticationMethod.Read.All` | Check MFA status |
+| `Sites.Read.All` | Read SharePoint site settings |
+| `MailboxSettings.Read` | Read inbox rules |
+| `TeamSettings.ReadWrite.All` | Read Teams configuration |
+
+> 💡 See Microsoft's guide on [registering an application](https://learn.microsoft.com/en-us/entra/identity-platform/quickstart-register-app) and [granting admin consent](https://learn.microsoft.com/en-us/entra/identity-platform/v2-permissions-and-consent).
+
+## Installation
 
 ```bash
-# Clone and install
+# Clone the repository
 git clone <repo-url>
 cd office365-audit-framework
+
+# Install dependencies and build
 pnpm install
-
-# Configure credentials
-cp .env.example .env
-# Edit .env with your Entra ID app registration details
-
-# Build
 pnpm build
+
+# Link the CLI globally (makes 'o365-audit' available everywhere)
+npm link
 ```
+
+After linking, you can run `o365-audit` from any directory.
+
+## Configuration
+
+Copy the example environment file and fill in your Entra ID app registration credentials:
+
+```bash
+cp .env.example .env
+```
+
+Edit `.env`:
+
+```ini
+TENANT_ID=your-tenant-id
+CLIENT_ID=your-app-client-id
+CLIENT_SECRET=your-app-client-secret
+```
+
+> ⚠️ The `.env` file must be in the directory where you run `o365-audit`, or in the project root.
 
 ## Usage
 
 ```bash
-# Run full audit
-pnpm start audit
+# Run a full security audit
+o365-audit audit
 
-# Filter by category
-pnpm start audit --categories identity data-protection
+# Audit specific categories only
+o365-audit audit --categories identity data-protection
 
-# Filter by service
-pnpm start audit --services "Entra ID" Teams
+# Audit specific services only
+o365-audit audit --services "Entra ID" Teams
 
 # Verbose output (show individual findings)
-pnpm start audit --verbose
+o365-audit audit --verbose
 
 # Custom output directory and retention
-pnpm start audit --output-dir ./reports --keep-runs 20
+o365-audit audit --output-dir ./reports --keep-runs 20
 ```
 
 ### CLI Options
@@ -99,7 +121,7 @@ Open `report.html` in any browser to see:
 - **Findings by service/category** — bar charts
 - **Check details table** — status, severity, finding count, framework refs
 - **Expandable findings** — affected resources with remediation guidance
-- **Drift section** — new/resolved findings vs. previous run (when available)
+- **Drift section** — new/resolved findings vs. previous run
 
 ### Drift Detection
 
@@ -107,29 +129,21 @@ On subsequent runs, the tool automatically compares against the previous run:
 
 - 🆕 **New findings** — issues that appeared since last run
 - ✅ **Resolved findings** — issues that were fixed
-- The drift summary appears in both CLI output and the HTML dashboard
+
+The drift summary appears in both CLI output and the HTML dashboard.
 
 ## Security Checks
 
 | Category | Service | Checks |
 |----------|---------|--------|
 | Identity | Entra ID | MFA enforcement, conditional access, guest users, app registrations, privileged roles |
-| Data Protection | Exchange/SharePoint | Inbox forwarding rules, SharePoint sharing, site permissions |
+| Data Protection | Exchange / SharePoint | Inbox forwarding rules, SharePoint sharing, site permissions |
 | Access Control | Teams | Guest access, app policies, app catalog, meeting policies |
 | Threat Protection | Exchange | Anti-spam/phish policies, transport rules |
 
 ## Development
 
-```bash
-# Build
-pnpm build
-
-# Type check only
-pnpm exec tsc --noEmit
-
-# Run report integration test
-node dist/report/test-reports.js
-```
+See [DEVELOPMENT.md](DEVELOPMENT.md) for build instructions, project structure, and how to add new checks.
 
 ## License
 

@@ -1,8 +1,11 @@
 {
   "name": "office365-audit-framework",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Security audit tool for Microsoft 365 tenants — checks Entra ID, Exchange, SharePoint, and Teams against CIS benchmarks",
+  "main": "dist/index.js",
+  "bin": {
+    "o365-audit": "./dist/index.js"
+  },
   "scripts": {
     "build": "tsc",
     "start": "node dist/index.js"
