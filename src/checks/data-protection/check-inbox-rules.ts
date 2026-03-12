@@ -8,6 +8,11 @@ export const meta: CheckMeta = {
   severity: "high",
   service: "Exchange Online",
   frameworks: [{ name: "CIS M365 v3.1", control: "6.2.1" }],
+  remediation: {
+    description: "Disable external auto-forwarding via transport rule or remove individual inbox forwarding rules.",
+    reference: "https://learn.microsoft.com/en-us/exchange/policy-and-compliance/mail-flow-rules/mail-flow-rules",
+    script: "# Disable forwarding per mailbox:\nSet-Mailbox -Identity <user> -DeliverToMailboxAndForward $false -ForwardingSmtpAddress $null\n# Block external forwarding org-wide via transport rule",
+  },
 };
 
 interface EmailAddress {

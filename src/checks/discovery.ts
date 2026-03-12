@@ -8,6 +8,8 @@ export interface DiscoverOptions {
   checksDir?: string;
   /** Filter to specific categories */
   categories?: string[];
+  /** Filter to specific services */
+  services?: string[];
 }
 
 /**
@@ -33,6 +35,11 @@ export async function discoverChecks(options?: DiscoverOptions): Promise<CheckMo
 
       // Apply category filter if specified
       if (options?.categories && !options.categories.includes(mod.meta.category)) {
+        continue;
+      }
+
+      // Apply service filter if specified
+      if (options?.services && !options.services.includes(mod.meta.service)) {
         continue;
       }
 

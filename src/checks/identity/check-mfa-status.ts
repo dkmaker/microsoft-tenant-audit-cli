@@ -7,6 +7,11 @@ export const meta: CheckMeta = {
   severity: "critical",
   service: "Entra ID",
   frameworks: [{ name: "CIS M365 v3.1", control: "5.2.2.1" }],
+  remediation: {
+    description: "Enable MFA for all privileged accounts using Conditional Access policies or per-user MFA settings.",
+    reference: "https://learn.microsoft.com/en-us/entra/identity/authentication/howto-mfa-getstarted",
+    script: "# Require MFA for all admin roles via Conditional Access\nConnect-MgGraph -Scopes 'Policy.ReadWrite.ConditionalAccess'\n# Create a policy targeting directory roles with MFA grant control",
+  },
 };
 
 const PASSWORD_METHOD = "#microsoft.graph.passwordAuthenticationMethod";

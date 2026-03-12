@@ -1,5 +1,7 @@
 node_modules/
 dist/
+output/
 .env
 .search_cache/
 *.tsbuildinfo
+spike-poc/

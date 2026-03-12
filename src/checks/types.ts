@@ -29,6 +29,17 @@ export interface CheckMeta {
   service: string;
   /** Compliance framework mappings */
   frameworks: FrameworkMapping[];
+  /** Remediation guidance for when this check fails */
+  remediation?: Remediation;
+}
+
+export interface Remediation {
+  /** Plain text remediation steps */
+  description: string;
+  /** Link to Microsoft documentation or relevant resource */
+  reference?: string;
+  /** Example PowerShell/CLI fix snippet (copy-pasteable) */
+  script?: string;
 }
 
 // --- Check Execution ---

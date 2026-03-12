@@ -7,6 +7,11 @@ export const meta: CheckMeta = {
   severity: "high",
   service: "SharePoint Online",
   frameworks: [{ name: "CIS M365 v3.1", control: "7.2.1" }],
+  remediation: {
+    description: "Restrict external sharing to authenticated guests only. Disable 'Anyone' links on sensitive sites.",
+    reference: "https://learn.microsoft.com/en-us/sharepoint/turn-external-sharing-on-or-off",
+    script: "Set-SPOTenant -SharingCapability ExternalUserSharingOnly\n# Per-site: Set-SPOSite -Identity <url> -SharingCapability ExternalUserSharingOnly",
+  },
 };
 
 /**
